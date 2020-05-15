@@ -10,6 +10,7 @@ import sys
 import time
 import pickle as pkl
 
+import fetch_block_construction
 
 
 from video import VideoRecorder
@@ -19,26 +20,6 @@ import utils
 
 import dmc2gym
 import hydra
-
-
-def make_env(cfg):
-    """Helper function to create dm_control environment"""
-    if cfg.env == 'ball_in_cup_catch':
-        domain_name = 'ball_in_cup'
-        task_name = 'catch'
-    else:
-        domain_name = cfg.env.split('_')[0]
-        task_name = '_'.join(cfg.env.split('_')[1:])
-
-    env = dmc2gym.make(domain_name=domain_name,
-                       task_name=task_name,
-                       seed=cfg.seed,
-                       visualize_reward=True)
-    env.seed(cfg.seed)
-    assert env.action_space.low.min() >= -1
-    assert env.action_space.high.max() <= 1
-
-    return env
 
 
 
@@ -57,8 +38,11 @@ class Workspace(object):
         utils.set_seed_everywhere(cfg.seed)
         self.device = torch.device(cfg.device)
         self.env = utils.make_env(cfg)
+        self.obs_shape = self.env.observation_space['observation'].shape
+        self.goal_shape = self.env.observation_space['desired_goal'].shape
 
-        cfg.agent.params.obs_dim = self.env.observation_space.shape[0]
+        cfg.agent.params.obs_dim = self.obs_shape[0]
+        cfg.agent.params.goal_dim = self.goal_shape[0]
         cfg.agent.params.action_dim = self.env.action_space.shape[0]
         cfg.agent.params.action_range = [
             float(self.env.action_space.low.min()),
@@ -66,7 +50,7 @@ class Workspace(object):
         ]
         self.agent = hydra.utils.instantiate(cfg.agent)
 
-        self.replay_buffer = ReplayBuffer(self.env.observation_space.shape,
+        self.replay_buffer = ReplayBuffer(self.obs_shape,self.goal_shape,
                                           self.env.action_space.shape,
                                           int(cfg.replay_buffer_capacity),
                                           self.device)
@@ -84,7 +68,7 @@ class Workspace(object):
             episode_reward = 0
             while not done:
                 with utils.eval_mode(self.agent):
-                    action = self.agent.act(obs, sample=False)
+                    action = self.agent.act(obs['observation'],obs['desired_goal'], sample=False)
                 obs, reward, done, _ = self.env.step(action)
                 self.video_recorder.record(self.env)
                 episode_reward += reward
@@ -93,9 +77,37 @@ class Workspace(object):
             self.logger.log('eval/episode_reward', episode_reward, self.step)
         self.logger.dump(self.step)
 
+    def run_her(self,path_buffer):
+        
+        #first_obs = path_buffer[0][0]
+        #last_obs = path_buffer[-1][0]
+        #first_goal = first_obs['achieved_goal']
+        #last_goal = last_obs['achieved_goal']
+        #goal_changed = np.mean(last_goal - first_goal)**2 > 1e-6
+
+        #if goal_changed:
+        for n,ts in enumerate(path_buffer):
+            # select goal id
+            if self.cfg.her_strat == 'future':
+                i = np.random.randint(n,len(path_buffer))
+            elif self.cfg.her_strat == 'last':
+                i = -1
+            new_goal_obs = path_buffer[i][3]
+            new_goal = new_goal_obs['achieved_goal']
+            # relabel
+            obs,action,reward,next_obs,done,done_no_max = ts
+            obs['desired_goal'] = new_goal
+            next_obs['desired_goal'] = new_goal
+            reward = self.env.compute_reward(next_obs['achieved_goal'],new_goal,None)
+            self.replay_buffer.add(obs, action, reward, next_obs, done,
+                                done_no_max)
+
+            
+
     def run(self):
         episode, episode_reward, done = 0, 0, True
         start_time = time.time()
+        path_buffer = []
         while self.step < self.cfg.num_train_steps:
             if done:
                 if self.step > 0:
@@ -122,12 +134,20 @@ class Workspace(object):
 
                 self.logger.log('train/episode', episode, self.step)
 
+                # her
+                if self.cfg.her_iters > 0 and len(path_buffer):
+                    for k in range(self.cfg.her_iters):
+                        self.run_her(path_buffer)
+                path_buffer = []
+                        
+                            
+
             # sample action for data collection
             if self.step < self.cfg.num_seed_steps:
                 action = self.env.action_space.sample()
             else:
                 with utils.eval_mode(self.agent):
-                    action = self.agent.act(obs, sample=True)
+                    action = self.agent.act(obs['observation'],obs['desired_goal'], sample=True)
 
             # run training update
             if self.step >= self.cfg.num_seed_steps:
@@ -142,6 +162,8 @@ class Workspace(object):
 
             self.replay_buffer.add(obs, action, reward, next_obs, done,
                                    done_no_max)
+            path_buffer.append([obs,action,reward,next_obs,done,done_no_max])
+
 
             obs = next_obs
             episode_step += 1

@@ -13,7 +13,7 @@ import hydra
 
 class SACAgent(Agent):
     """SAC algorithm."""
-    def __init__(self, obs_dim, action_dim, action_range, device,
+    def __init__(self, obs_dim, goal_dim, action_dim, action_range, device,
                  critic_cfg, actor_cfg, discount, init_temperature, alpha_lr,
                  alpha_betas, actor_lr, actor_betas, actor_update_frequency,
                  critic_lr, critic_betas, critic_tau,
@@ -65,26 +65,28 @@ class SACAgent(Agent):
     def alpha(self):
         return self.log_alpha.exp()
 
-    def act(self, obs, sample=False):
+    def act(self, obs, goal, sample=False):
         obs = torch.FloatTensor(obs).to(self.device)
         obs = obs.unsqueeze(0)
-        dist = self.actor(obs)
+        goal = torch.FloatTensor(goal).to(self.device)
+        goal = goal.unsqueeze(0)
+        dist = self.actor(obs, goal)
         action = dist.sample() if sample else dist.mean
         action = action.clamp(*self.action_range)
         assert action.ndim == 2 and action.shape[0] == 1
         return utils.to_np(action[0])
 
-    def update_critic(self, obs, action, reward, next_obs, not_done, logger, step):
-        dist = self.actor(next_obs)
+    def update_critic(self, obs, action, reward, next_obs, not_done, achieved_goal, desired_goal, logger, step):
+        dist = self.actor(next_obs, desired_goal)
         next_action = dist.rsample()
         log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
-        target_Q1, target_Q2 = self.critic_target(next_obs, next_action)
+        target_Q1, target_Q2 = self.critic_target(next_obs, desired_goal, next_action)
         target_V = torch.min(target_Q1, target_Q2) - self.alpha.detach() * log_prob
         target_Q = reward + (not_done * self.discount * target_V)
         target_Q = target_Q.detach()
 
         # get current Q estimates
-        current_Q1, current_Q2 = self.critic(obs, action)
+        current_Q1, current_Q2 = self.critic(obs, desired_goal, action)
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(
             current_Q2, target_Q)
         logger.log('train_critic/loss', critic_loss, step)
@@ -96,11 +98,11 @@ class SACAgent(Agent):
 
         self.critic.log(logger, step)
 
-    def update_actor_and_alpha(self, obs, logger, step):
-        dist = self.actor(obs)
+    def update_actor_and_alpha(self, obs, achieved_goal, desired_goal, logger, step):
+        dist = self.actor(obs, desired_goal)
         action = dist.rsample()
         log_prob = dist.log_prob(action).sum(-1, keepdim=True)
-        actor_Q1, actor_Q2 = self.critic(obs, action)
+        actor_Q1, actor_Q2 = self.critic(obs, desired_goal, action)
 
         actor_Q = torch.min(actor_Q1, actor_Q2)
         actor_loss = (self.alpha.detach() * log_prob - actor_Q).mean()
@@ -125,16 +127,16 @@ class SACAgent(Agent):
         self.log_alpha_optimizer.step()
 
     def update(self, replay_buffer, logger, step):
-        obs, action, reward, next_obs, not_done, not_done_no_max = replay_buffer.sample(
+        obs, action, reward, next_obs, not_done, not_done_no_max, achieved_goal, desired_goal = replay_buffer.sample(
             self.batch_size)
 
         logger.log('train/batch_reward', reward.mean(), step)
 
-        self.update_critic(obs, action, reward, next_obs, not_done_no_max,
+        self.update_critic(obs, action, reward, next_obs, not_done_no_max, achieved_goal, desired_goal, 
                            logger, step)
 
         if step % self.actor_update_frequency == 0:
-            self.update_actor_and_alpha(obs, logger, step)
+            self.update_actor_and_alpha(obs, achieved_goal, desired_goal, logger, step)
 
         if step % self.critic_target_update_frequency == 0:
             utils.soft_update_params(self.critic, self.critic_target,

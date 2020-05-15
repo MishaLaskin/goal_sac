@@ -3,6 +3,7 @@ agent:
   class: agent.sac.SACAgent
   params:
     obs_dim: ??? # to be specified later
+    goal_dim: ??? # critic_cfg
     action_dim: ??? # to be specified later
     action_range: ??? # to be specified later
     device: ${device}
@@ -25,6 +26,7 @@ double_q_critic:
   class: agent.critic.DoubleQCritic
   params:
     obs_dim: ${agent.params.obs_dim}
+    goal_dim: ${agent.params.goal_dim}
     action_dim: ${agent.params.action_dim}
     hidden_dim: 1024
     hidden_depth: 2
@@ -33,6 +35,7 @@ diag_gaussian_actor:
   class: agent.actor.DiagGaussianActor
   params:
     obs_dim: ${agent.params.obs_dim}
+    goal_dim: ${agent.params.goal_dim}
     action_dim: ${agent.params.action_dim}
     hidden_depth: 2
     hidden_dim: 1024
