@@ -50,6 +50,11 @@ class Workspace(object):
         ]
         self.agent = hydra.utils.instantiate(cfg.agent)
 
+        if cfg.reset_agent:
+            self.reset_agent = hydra.utils.instantiate(cfg.agent)
+            self.reset_agent.load(cfg.reset_agent_path)
+            self.reset_agent.eval()
+
         self.replay_buffer = ReplayBuffer(self.obs_shape,self.goal_shape,
                                           self.env.action_space.shape,
                                           int(cfg.replay_buffer_capacity),
@@ -79,13 +84,6 @@ class Workspace(object):
 
     def run_her(self,path_buffer):
         
-        #first_obs = path_buffer[0][0]
-        #last_obs = path_buffer[-1][0]
-        #first_goal = first_obs['achieved_goal']
-        #last_goal = last_obs['achieved_goal']
-        #goal_changed = np.mean(last_goal - first_goal)**2 > 1e-6
-
-        #if goal_changed:
         for n,ts in enumerate(path_buffer):
             # select goal id
             if self.cfg.her_strat == 'future':
@@ -128,6 +126,12 @@ class Workspace(object):
                 self.logger.log('train/episode_reward', episode_reward,
                                 self.step)
 
+                # her
+                if self.cfg.her_iters > 0 and len(path_buffer):
+                    for k in range(self.cfg.her_iters):
+                        self.run_her(path_buffer)
+                path_buffer = []
+
                 obs = self.env.reset()
                 self.agent.reset()
                 done = False
@@ -137,11 +141,7 @@ class Workspace(object):
 
                 self.logger.log('train/episode', episode, self.step)
 
-                # her
-                if self.cfg.her_iters > 0 and len(path_buffer):
-                    for k in range(self.cfg.her_iters):
-                        self.run_her(path_buffer)
-                path_buffer = []
+                
                         
                             
 
@@ -149,7 +149,11 @@ class Workspace(object):
             if self.step < self.cfg.num_seed_steps:
                 action = self.env.action_space.sample()
             else:
-                with utils.eval_mode(self.agent):
+                if self.cfg.reset_agent and episode_reward < 10:
+                    agent = self.reset_agent
+                else:
+                    agent = self.agent
+                with utils.eval_mode(agent):
                     action = self.agent.act(obs['observation'],obs['desired_goal'], sample=True)
 
             # run training update

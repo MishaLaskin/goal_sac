@@ -6,6 +6,8 @@ env: FetchReach-v1
 # this needs to be specified manually
 experiment: test_exp
 save_model: true
+reset_agent: false
+reset_agent_path: /home/misha/algos/goal_sac/exp/2020.05.18/0858_sac_fetch_reach/saved_models
 
 num_train_steps: 1e7
 replay_buffer_capacity: ${num_train_steps}
