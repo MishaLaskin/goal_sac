@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
-
+import os
 
 from agent import Agent
 import utils
@@ -141,3 +141,26 @@ class SACAgent(Agent):
         if step % self.critic_target_update_frequency == 0:
             utils.soft_update_params(self.critic, self.critic_target,
                                      self.critic_tau)
+
+    def save(self):
+        path = 'saved_models'
+        if not os.path.exists(path):
+            print('Saving model in:',os.getcwd() + '/' + path)
+            os.makedirs(path)
+        
+        actor_path = path + '/actor.pt'
+        critic_path = path + '/critic.pt'
+        torch.save(self.actor.state_dict(), actor_path)
+        torch.save(self.critic.state_dict(), critic_path)
+
+    def load(self,path=None):
+        if path is None:
+            path = 'saved_models'
+        actor_path = path + '/actor.pt'
+        critic_path = path + '/critic.pt'
+        actor_ckpt = torch.load(actor_path)
+        critic_ckpt = torch.load(critic_path)
+        self.actor.load_state_dict(actor_ckpt)
+        self.critic.load_state_dict(critic_ckpt)
+        
+

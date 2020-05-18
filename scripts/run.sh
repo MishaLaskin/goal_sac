@@ -14,3 +14,5 @@ CUDA_VISIBLE_DEVICES=2 python train.py env=${ENV_NAME} her_iters=4 her_strat=fut
 #CUDA_VISIBLE_DEVICES=4 python train.py env=${ENV_NAME} her_iters=4 her_strat=future experiment=fetch_pick_her4_futureC save_video=true eval_frequency=25000 &
 #CUDA_VISIBLE_DEVICES=6 python train.py env=FetchPickAndPlace-v1 her_iters=10 her_strat=future experiment=fetch_pick_her10_future &
 #CUDA_VISIBLE_DEVICES=7 python train.py env=FetchPickAndPlace-v1 her_iters=12 her_strat=future experiment=fetch_pick_her12_future &
+
+#CUDA_VISIBLE_DEVICES=7 python train.py env=FetchReach-v1 her_iters=4 her_strat=future experiment=fetch_reach 

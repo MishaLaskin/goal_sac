@@ -120,6 +120,9 @@ class Workspace(object):
                 # evaluate agent periodically
                 if self.step > 0 and self.step % self.cfg.eval_frequency == 0:
                     self.logger.log('eval/episode', episode, self.step)
+                    if self.cfg.save_model:
+                        self.agent.save()
+                        self.agent.load()
                     self.evaluate()
 
                 self.logger.log('train/episode_reward', episode_reward,
