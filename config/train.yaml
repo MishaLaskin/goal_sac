@@ -1,7 +1,7 @@
 defaults:
     - agent: sac
 
-env: FetchReach-v1
+env: asdfasdf #FetchReach-v1
 
 # this needs to be specified manually
 experiment: test_exp

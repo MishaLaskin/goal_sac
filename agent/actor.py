@@ -95,3 +95,39 @@ class DiagGaussianActor(nn.Module):
         for i, m in enumerate(self.trunk):
             if type(m) == nn.Linear:
                 logger.log_param(f'train_actor/fc{i}', m, step)
+
+
+class CategoricalActor(nn.Module):
+    """torch.distributions implementation of an diagonal Gaussian policy."""
+
+    def __init__(self, obs_dim, goal_dim, action_dim, hidden_dim, hidden_depth,
+                 encoder=None):
+        super().__init__()
+        self.action_dim = action_dim
+        self.encoder = encoder
+        self.trunk = nn.Sequential(
+            nn.Linear(512+2, hidden_dim), nn.ReLU(), # todo: change 1024
+            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(hidden_dim, action_dim)
+        )
+
+        self.outputs = dict()
+        self.apply(utils.weight_init)
+
+    def forward(self, obs, goal):
+        obs = self.encoder(obs)
+        obs = torch.cat([obs, goal], dim=-1)
+
+        out = self.trunk(obs)
+        self.outputs['action'] = F.softmax(out, dim=-1)
+
+        dist = pyd.Categorical(logits=out)
+        return dist
+
+    def log(self, logger, step):
+        for k, v in self.outputs.items():
+            logger.log_histogram(f'train_actor/{k}_hist', v, step)
+
+        for i, m in enumerate(self.trunk):
+            if type(m) == nn.Linear:
+                logger.log_param(f'train_actor/fc{i}', m, step)

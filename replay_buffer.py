@@ -20,6 +20,7 @@ class ReplayBuffer(object):
         self.achieved_goals = np.empty((capacity, *goal_shape), dtype=obs_dtype)
         self.desired_goals = np.empty((capacity, *goal_shape), dtype=obs_dtype)
 
+        print("ACTION SHAPE", action_shape)
         self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
         self.rewards = np.empty((capacity, 1), dtype=np.float32)
         self.not_dones = np.empty((capacity, 1), dtype=np.float32)
@@ -34,7 +35,8 @@ class ReplayBuffer(object):
 
     def add(self, obs, action, reward, next_obs, done, done_no_max):
         np.copyto(self.obses[self.idx], obs['observation'])
-        np.copyto(self.actions[self.idx], action)
+        #np.copyto(self.actions[self.idx], action)
+        self.actions[self.idx] = action
         np.copyto(self.rewards[self.idx], reward)
         np.copyto(self.next_obses[self.idx], next_obs['observation'])
         np.copyto(self.achieved_goals[self.idx], next_obs['achieved_goal'])

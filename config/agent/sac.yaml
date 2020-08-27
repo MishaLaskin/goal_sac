@@ -7,8 +7,8 @@ agent:
     action_dim: ??? # to be specified later
     action_range: ??? # to be specified later
     device: ${device}
-    critic_cfg: ${double_q_critic}
-    actor_cfg: ${diag_gaussian_actor}
+    critic_cfg: ${discrete_critic} # ${double_q_critic}
+    actor_cfg: ${categorical_actor} # ${diag_gaussian_actor}
     discount: 0.99
     init_temperature: 0.1
     alpha_lr: 1e-4
@@ -30,7 +30,26 @@ double_q_critic:
     action_dim: ${agent.params.action_dim}
     hidden_dim: 1024
     hidden_depth: 2
-    
+
+discrete_critic:
+  class: agent.critic.DiscreteCritic
+  params:
+    obs_dim: ${agent.params.obs_dim}
+    goal_dim: ${agent.params.goal_dim}
+    action_dim: ${agent.params.action_dim}
+    action_range: ${agent.params.action_range}
+    hidden_dim: 1024
+    hidden_depth: 2
+
+categorical_actor:
+  class: agent.actor.CategoricalActor
+  params:
+    obs_dim: ${agent.params.obs_dim}
+    goal_dim: ${agent.params.goal_dim}
+    action_dim: ${agent.params.action_range}
+    hidden_depth: 2
+    hidden_dim: 1024
+
 diag_gaussian_actor:
   class: agent.actor.DiagGaussianActor
   params:
@@ -40,3 +59,4 @@ diag_gaussian_actor:
     hidden_depth: 2
     hidden_dim: 1024
     log_std_bounds: [-5, 2]
+

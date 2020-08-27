@@ -10,13 +10,14 @@ import sys
 import time
 import pickle as pkl
 
-import fetch_block_construction
+#import fetch_block_construction
 
 
 from video import VideoRecorder
 from logger import Logger
 from replay_buffer import ReplayBuffer
 import utils
+from envs import block_env
 
 import dmc2gym
 import hydra
@@ -37,17 +38,19 @@ class Workspace(object):
 
         utils.set_seed_everywhere(cfg.seed)
         self.device = torch.device(cfg.device)
-        self.env = utils.make_env(cfg)
+        #self.env = utils.make_env(cfg)
+        self.env = block_env.make_block_env()
         self.obs_shape = self.env.observation_space['observation'].shape
         self.goal_shape = self.env.observation_space['desired_goal'].shape
 
         cfg.agent.params.obs_dim = self.obs_shape[0]
         cfg.agent.params.goal_dim = self.goal_shape[0]
-        cfg.agent.params.action_dim = self.env.action_space.shape[0]
-        cfg.agent.params.action_range = [
-            float(self.env.action_space.low.min()),
-            float(self.env.action_space.high.max())
-        ]
+        cfg.agent.params.action_dim = 1 #self.env.action_space.#shape[0]
+        cfg.agent.params.action_range = self.env.action_space.n
+        # cfg.agent.params.action_range = [
+        #     float(self.env.action_space.low.min()),
+        #     float(self.env.action_space.high.max())
+        # ]
         self.agent = hydra.utils.instantiate(cfg.agent)
 
         self.replay_buffer = ReplayBuffer(self.obs_shape,self.goal_shape,
