@@ -97,7 +97,7 @@ class SACAgent(Agent):
         action = dist.sample() if sample else dist.mean
        # action = action.clamp(*self.action_range)
        # assert action.ndim == 2 and action.shape[0] == 1
-        return utils.to_np(action[0])
+        return int(utils.to_np(action)[0]) # utils.to_np(action[0])
 
     def update_critic(self, obs, action, reward, next_obs, not_done, achieved_goal, desired_goal, logger, step):
         dist = self.actor(next_obs, desired_goal)
@@ -112,7 +112,7 @@ class SACAgent(Agent):
             target_Q1 = torch.max(target_Q1, dim=-1).values
             target_Q2 = torch.max(target_Q2, dim=-1).values
         target_V = torch.min(target_Q1, target_Q2) - self.alpha.detach() * log_prob
-        target_Q = reward + (not_done * self.discount * target_V)
+        target_Q = reward.squeeze() + (not_done.squeeze() * self.discount * target_V.squeeze())
         target_Q = target_Q.detach()
 
         # get current Q estimates
@@ -122,7 +122,6 @@ class SACAgent(Agent):
             current_Q1, current_Q2 = self.critic(obs, desired_goal)
             current_Q1 = select_at_indexes(action.long(), current_Q1)
             current_Q2 = select_at_indexes(action.long(), current_Q2)
-
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(
             current_Q2, target_Q)
         logger.log('train_critic/loss', critic_loss, step)
@@ -165,7 +164,6 @@ class SACAgent(Agent):
     def update(self, replay_buffer, logger, step):
         obs, action, reward, next_obs, not_done, not_done_no_max, achieved_goal, desired_goal = replay_buffer.sample(
             self.batch_size)
-
         logger.log('train/batch_reward', reward.mean(), step)
 
         self.update_critic(obs, action, reward, next_obs, not_done_no_max, achieved_goal, desired_goal, 

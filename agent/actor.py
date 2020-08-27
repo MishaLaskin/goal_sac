@@ -120,7 +120,6 @@ class CategoricalActor(nn.Module):
 
         out = self.trunk(obs)
         self.outputs['action'] = F.softmax(out, dim=-1)
-
         dist = pyd.Categorical(logits=out)
         return dist
 

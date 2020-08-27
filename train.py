@@ -71,7 +71,7 @@ class Workspace(object):
             episode_reward = 0
             while not done:
                 with utils.eval_mode(self.agent):
-                    action = self.agent.act(obs['observation'],obs['desired_goal'], sample=False)
+                    action = self.agent.act(obs['observation'],obs['desired_goal'], sample=True) # todo: FAlse
                 obs, reward, done, _ = self.env.step(action)
                 self.video_recorder.record(self.env)
                 episode_reward += reward
@@ -111,6 +111,7 @@ class Workspace(object):
         episode, episode_reward, done = 0, 0, True
         start_time = time.time()
         path_buffer = []
+        last_eval = 0
         while self.step < self.cfg.num_train_steps:
             if done:
                 if self.step > 0:
@@ -121,13 +122,14 @@ class Workspace(object):
                         self.step, save=(self.step > self.cfg.num_seed_steps))
 
                 # evaluate agent periodically
-                if self.step > 0 and self.step % self.cfg.eval_frequency == 0:
+                if self.step > 0 and self.step // self.cfg.eval_frequency > last_eval:
+                    last_eval += 1
                     self.logger.log('eval/episode', episode, self.step)
                     if self.cfg.save_model:
                         self.agent.save()
                         self.agent.load()
+                    print("hi evaluating")
                     self.evaluate()
-
                 self.logger.log('train/episode_reward', episode_reward,
                                 self.step)
 

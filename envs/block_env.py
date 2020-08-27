@@ -3,6 +3,8 @@ from collections import namedtuple
 import numpy as np
 from gym import spaces
 import gym
+from skimage.transform import resize
+
 import os
 import copy
 from gym.utils import seeding
@@ -62,7 +64,7 @@ class BlockEnv(gym.Env):
         self.box_size = 1
         self.obs_shape = [self.grid_size, self.grid_size]
         self.observation_space = spaces.Box(low=0, high=self.num_blocks, shape=self.obs_shape, dtype=np.uint8)
-        self._max_episode_steps = self.num_blocks * 25
+        self._max_episode_steps = 25 #self.num_blocks * 25
         self.use_goal = True
         self.reset()
 
@@ -87,7 +89,6 @@ class BlockEnv(gym.Env):
         info = {}
         info['success'] = False
         self._step += 1
-
         i, j = np.argwhere(self.grid == block)[0]
         delta = self.act_to_ij[action]
         new_ij = [(i + delta[0]) % (self.grid_size), (j + delta[1]) % (self.grid_size)]
@@ -144,8 +145,14 @@ class BlockEnv(gym.Env):
             grid[i, j] = order[index]
         self.goal = grid
 
-    def render(self):
-        img = self.grid
+    def render(self, mode=None):
+        if mode == 'rgb_array':
+            #img = resize(self.grid, (60,60)).astype(np.uint8)
+            img = self.grid
+            img = img * (255//4)
+            img = np.stack((img, img, img)).transpose(1, 2, 0)
+        else:
+            img = self.grid
         return img
 
     def get_action_meanings(self):
@@ -160,7 +167,7 @@ class BlockEnv(gym.Env):
 class ActionToNum(gym.ActionWrapper):
     def __init__(self, env):
         super().__init__(env)
-        self.num_actions = env.action_space.n
+        self.num_actions = int(env.action_space.n)
         self.action_space = spaces.Discrete(env.action_space.n * env.num_blocks)
 
     def action(self, ac):

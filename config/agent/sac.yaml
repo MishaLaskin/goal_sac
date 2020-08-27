@@ -9,7 +9,7 @@ agent:
     device: ${device}
     critic_cfg: ${discrete_critic} # ${double_q_critic}
     actor_cfg: ${categorical_actor} # ${diag_gaussian_actor}
-    discount: 0.99
+    discount: 1 #0.99
     init_temperature: 0.1
     alpha_lr: 1e-4
     alpha_betas: [0.9, 0.999]
