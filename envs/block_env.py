@@ -44,8 +44,8 @@ class DictObsWrap(gym.ObservationWrapper):
 
     def observation(self, obs):
         return {'observation': np.expand_dims(obs, 0),
-                'desired_goal': np.array(self.goal_pos).astype(np.uint8),
-                'achieved_goal': np.array(self.env.env._get_block_pos(self.block)).astype(np.uint8)}
+                'desired_goal': np.array(self.env.env.goal_pos).astype(np.uint8),
+                'achieved_goal': np.array(self.env.env._get_block_pos(1)).astype(np.uint8)}
 
 
 class BlockEnv(gym.Env):
@@ -64,7 +64,7 @@ class BlockEnv(gym.Env):
         self.box_size = 1
         self.obs_shape = [self.grid_size, self.grid_size]
         self.observation_space = spaces.Box(low=0, high=self.num_blocks, shape=self.obs_shape, dtype=np.uint8)
-        self._max_episode_steps = 25 #self.num_blocks * 25
+        self._max_episode_steps = 25 # self.num_blocks * 25
         self.use_goal = True
         self.reset()
 
@@ -77,7 +77,7 @@ class BlockEnv(gym.Env):
         for m in objects:
             while True:
                 i, j = np.random.randint(grid.shape[0], size=2)
-                if grid[i, j] == 0:
+                if grid[i, j] == 0 and not (np.array([i, j]) == self.goal_pos).all():
                     grid[i, j] = m
                     break
         self.grid = grid
@@ -99,6 +99,9 @@ class BlockEnv(gym.Env):
         success = self._is_done(next_obs)
         done = success or self._step >= self._max_episode_steps
         reward = 0 if success else -1
+        if done:
+            pass
+            #print("done", done, reward)
 
         return next_obs, reward, done, info
 
@@ -168,17 +171,21 @@ class ActionToNum(gym.ActionWrapper):
     def __init__(self, env):
         super().__init__(env)
         self.num_actions = int(env.action_space.n)
-        self.action_space = spaces.Discrete(env.action_space.n * env.num_blocks)
+        self.action_space = spaces.Discrete(env.action_space.n ) #
 
     def action(self, ac):
         new_ac = ac % self.num_actions
         block = (ac // self.num_actions) + 1
+       # print(new_ac, block)
         return new_ac, block
 
 class BlockPlaceEnv(BlockEnv):
     def reset_goal(self):
-        self.goal_pos = (np.random.randint(self.grid_size), np.random.randint(self.grid_size))
+        self.goal_pos = (0, 0) #(np.random.randint(self.grid_size), np.random.randint(self.grid_size))
         self.block_ind = 1 #np.random.randint(self.num_blocks)
 
     def _is_done(self, obs):
-        return (self._get_block_pos(self.block_ind) == self.goal_pos).all()
+        # print(self._get_block_pos(self.block_ind))
+        # print(self.goal_pos)
+        # print((self._get_block_pos(self.block_ind) == self.goal_pos).all())
+        return (self._get_block_pos(self.block_ind) == (0,0)).all()

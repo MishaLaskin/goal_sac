@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
+from agent.encoder import PixelEncoder
 
 import utils
 
@@ -44,19 +45,19 @@ class DoubleQCritic(nn.Module):
                 logger.log_param(f'train_critic/q2_fc{i}', m2, step)
 
 class DiscreteCritic(nn.Module):
-    def __init__(self, obs_dim, goal_dim, action_dim, hidden_dim, hidden_depth,  action_range,encoder=None):
+    def __init__(self, obs_dim, goal_dim, action_dim, hidden_dim, hidden_depth,  action_range):
         super().__init__()
-        self.encoder = encoder
+        self.encoder = PixelEncoder((3, 10, 10), 256)
 
-        encoder_out = 512 # todo: fix this
-        self.Q1 = utils.mlp(encoder_out+ goal_dim, hidden_dim, action_range, hidden_depth)
+        encoder_out = 256 # todo: this is currently hard coded
+        self.Q1 = utils.mlp(encoder_out + goal_dim, hidden_dim, action_range, hidden_depth)
         self.Q2 = utils.mlp(encoder_out + goal_dim , hidden_dim, action_range, hidden_depth)
 
         self.outputs = dict()
         self.apply(utils.weight_init)
 
-    def forward(self, obs, goal):
-        obs = self.encoder(obs.float())
+    def forward(self, obs, goal, detach_encoder=False):
+        obs = self.encoder(obs.float(), detach=detach_encoder)
         obs = torch.cat([obs, goal], dim=-1)
 
         q1 = self.Q1(obs)
