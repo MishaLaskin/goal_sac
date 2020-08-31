@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch import distributions as pyd
 
 import utils
+from agent.encoder import PixelEncoder
 
 
 class TanhTransform(pyd.transforms.Transform):
@@ -104,23 +105,19 @@ class CategoricalActor(nn.Module):
                  encoder=None):
         super().__init__()
         self.action_dim = action_dim
-        self.encoder = encoder
-        self.trunk = nn.Sequential(
-            nn.Linear(512+2, hidden_dim), nn.ReLU(), # todo: change 1024
-            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
-            nn.Linear(hidden_dim, action_dim)
-        )
+        self.encoder = PixelEncoder((3, 10, 10), 256)
+        self.trunk = utils.mlp(256 + goal_dim, hidden_dim, action_dim,
+                               hidden_depth) # todo: hard coded
 
         self.outputs = dict()
         self.apply(utils.weight_init)
 
-    def forward(self, obs, goal):
-        obs = self.encoder(obs)
+    def forward(self, obs, goal, detach_encoder=False):
+        obs = self.encoder(obs.float(), detach=detach_encoder)
         obs = torch.cat([obs, goal], dim=-1)
-
         out = self.trunk(obs)
         self.outputs['action'] = F.softmax(out, dim=-1)
-        dist = pyd.Categorical(logits=out)
+        dist = pyd.Categorical(F.softmax(out, dim=-1))
         return dist
 
     def log(self, logger, step):

@@ -20,25 +20,12 @@ class SACAgent(Agent):
                  critic_target_update_frequency, batch_size):
         super().__init__()
         self.obs_dim = obs_dim
-        self.goal_dim = goal_dim
+        self.goal_dim = 0 # goal_dim
         self.is_image = False
         self.is_discrete = True
         if self.is_discrete:
             self.is_image = True
-            self.conv = nn.Sequential(
-                nn.Conv2d(in_channels=1, out_channels=128, kernel_size=(2, 2), padding=1),
-                nn.BatchNorm2d(128),
-                nn.ReLU(),
-                nn.MaxPool2d(kernel_size=(2, 2), stride=2),
-                nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
-                nn.BatchNorm2d(128),
-                nn.ReLU(),
-                nn.MaxPool2d(kernel_size=(2, 2), stride=2),
-                nn.Flatten()
-            ).to(device)
-            self.encoder_optimizer = torch.optim.Adam(
-                self.conv.parameters(), lr=5e-4
-            )
+
         self.action_range = action_range
         self.device = torch.device(device)
         self.discount = discount
@@ -51,12 +38,9 @@ class SACAgent(Agent):
         self.critic_target = hydra.utils.instantiate(critic_cfg).to(
             self.device)
         self.critic_target.load_state_dict(self.critic.state_dict())
-        self.critic_target.encoder = self.conv
-        self.critic.encoder = self.conv
-
 
         self.actor = hydra.utils.instantiate(actor_cfg).to(self.device)
-        self.actor.encoder = self.conv
+        self.actor.encoder.copy_conv_weights_from(self.critic.encoder)
 
         self.log_alpha = torch.tensor(np.log(init_temperature)).to(self.device)
         self.log_alpha.requires_grad = True
@@ -100,20 +84,21 @@ class SACAgent(Agent):
         return int(utils.to_np(action)[0]) # utils.to_np(action[0])
 
     def update_critic(self, obs, action, reward, next_obs, not_done, achieved_goal, desired_goal, logger, step):
-        dist = self.actor(next_obs, desired_goal)
-        if not self.is_discrete:
-            next_action = dist.rsample()
-            log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
-            target_Q1, target_Q2 = self.critic_target(next_obs, desired_goal, next_action)
-        else:
-            next_action = dist.sample()
-            log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
-            target_Q1, target_Q2 = self.critic_target(next_obs, desired_goal)
-            target_Q1 = torch.max(target_Q1, dim=-1).values
-            target_Q2 = torch.max(target_Q2, dim=-1).values
-        target_V = torch.min(target_Q1, target_Q2) - self.alpha.detach() * log_prob
-        target_Q = reward.squeeze() + (not_done.squeeze() * self.discount * target_V.squeeze())
-        target_Q = target_Q.detach()
+        with torch.no_grad():
+            dist = self.actor(next_obs, desired_goal)
+            if not self.is_discrete:
+                next_action = dist.rsample()
+                log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
+                target_Q1, target_Q2 = self.critic_target(next_obs, desired_goal, next_action)
+            else:
+                action_probabilities = dist.probs
+                log_action_probabilities = torch.log(dist.probs + 1e-8)
+                target_Q1, target_Q2 = self.critic_target(next_obs, desired_goal)
+                min_qf_next_target = action_probabilities * (
+                        torch.min(target_Q1, target_Q2) - self.alpha * log_action_probabilities)
+            target_V = min_qf_next_target.mean(dim=1).unsqueeze(-1) #torch.min(target_Q1, target_Q2) - self.alpha.detach() * log_prob
+            target_Q = reward.squeeze() + (not_done.squeeze() * self.discount * target_V.squeeze())
+            target_Q = target_Q.detach()
 
         # get current Q estimates
         if not self.is_discrete:
@@ -122,6 +107,7 @@ class SACAgent(Agent):
             current_Q1, current_Q2 = self.critic(obs, desired_goal)
             current_Q1 = select_at_indexes(action.long(), current_Q1)
             current_Q2 = select_at_indexes(action.long(), current_Q2)
+
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(
             current_Q2, target_Q)
         logger.log('train_critic/loss', critic_loss, step)
@@ -134,13 +120,17 @@ class SACAgent(Agent):
         self.critic.log(logger, step)
 
     def update_actor_and_alpha(self, obs, achieved_goal, desired_goal, logger, step):
-        dist = self.actor(obs, desired_goal)
-        action = dist.sample()#dist.rsample()
+        dist = self.actor(obs, desired_goal, detach_encoder=True)
+        action = dist.sample()#dist.rsample() # (Batch Size, )
         log_prob = dist.log_prob(action).sum(-1, keepdim=True)
-        actor_Q1, actor_Q2 = self.critic(obs, desired_goal)
 
-        actor_Q = torch.min(actor_Q1[action], actor_Q2[action])
-        actor_loss = (self.alpha.detach() * log_prob - actor_Q).mean()
+        actor_Q1, actor_Q2 = self.critic(obs, desired_goal, detach_encoder=True)
+        # actor_Q1 = select_at_indexes(action, actor_Q1)
+        # actor_Q2 = select_at_indexes(action, actor_Q2)
+
+        actor_Q = torch.min(actor_Q1, actor_Q2)
+        log_probs = torch.log(dist.probs + 1e-8)
+        actor_loss = (dist.probs * (self.alpha.detach() * log_probs - actor_Q)).mean()
 
         logger.log('train_actor/loss', actor_loss, step)
         logger.log('train_actor/target_entropy', self.target_entropy, step)

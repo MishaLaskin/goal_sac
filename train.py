@@ -102,6 +102,7 @@ class Workspace(object):
             obs['desired_goal'] = new_goal
             next_obs['desired_goal'] = new_goal
             reward = self.env.compute_reward(next_obs['achieved_goal'],new_goal,None)
+           # print("REW",reward)
             self.replay_buffer.add(obs, action, reward, next_obs, done,
                                 done_no_max)
 
