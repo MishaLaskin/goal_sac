@@ -34,8 +34,8 @@ class DictObsWrap(gym.ObservationWrapper):
         self.env = env
         self.observation_space = spaces.Dict({
             'observation': spaces.Box(low=0, high=env.num_blocks, shape=(1, *env.obs_shape),  dtype=np.uint8),
-            'desired_goal': spaces.Box(low=0, high=1, shape=(2,),  dtype=np.uint8),
-            'achieved_goal': spaces.Box(low=0, high=1, shape=(2,),  dtype=np.uint8)
+            'desired_goal': spaces.Box(low=0, high=env.num_blocks, shape=(1, *env.obs_shape),  dtype=np.uint8),
+            'achieved_goal': spaces.Box(low=0, high=1, shape=(1, *env.obs_shape),  dtype=np.uint8)
         })
         self.action_space = env.action_space
         self.goal_pos = env.env.goal_pos
@@ -43,9 +43,14 @@ class DictObsWrap(gym.ObservationWrapper):
         self.block = block
 
     def observation(self, obs):
+        desired_goal = self.env.env.grid.copy()
+        block_pos = self.env.env._get_block_pos(self.block)
+        desired_goal[block_pos[0]][block_pos[1]] = 0
+        goal_pos = np.array(self.env.env.goal_pos).astype(np.uint8)
+        desired_goal[goal_pos[0]][goal_pos[1]] = self.block
         return {'observation': np.expand_dims(obs, 0),
-                'desired_goal': np.array(self.env.env.goal_pos).astype(np.uint8),
-                'achieved_goal': np.array(self.env.env._get_block_pos(1)).astype(np.uint8)}
+                'desired_goal': np.expand_dims(desired_goal, 0),
+                'achieved_goal': np.expand_dims(obs, 0)}
 
 
 class BlockEnv(gym.Env):
@@ -58,7 +63,7 @@ class BlockEnv(gym.Env):
         self.action_space = spaces.Discrete(len(self._action_set))
         self.act_to_ij = {0: [0, 1], 1: [0, -1], 2: [-1, 0], 3: [1, 0], 4: [-1, 1], 5: [1, 1], 6: [-1, -1], 7: [1, -1]}
         # set observation space
-        self.num_blocks = 1
+        self.num_blocks = 3
         self.blocks = list(range(1, self.num_blocks + 1))
         self.grid_size = 10
         self.box_size = 1

@@ -15,21 +15,16 @@ class PixelEncoder(nn.Module):
         self.feature_dim = feature_dim
         self.num_layers = num_layers
         # try 2 5x5s with strides 2x2. with samep adding, it should reduce 84 to 21, so with valid, it should be even smaller than 21.
-        self.convs = nn.ModuleList([nn.Conv2d(in_channels=1, out_channels=128, kernel_size=(2, 2), padding=1),
-                                    nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1)])
+        self.convs = nn.ModuleList([nn.Conv2d(in_channels=1, out_channels=128, kernel_size=2, stride=2),
+                                    nn.Conv2d(in_channels=128, out_channels=32, kernel_size=2, stride=1)])
         self.conv = nn.Sequential(
             self.convs[0],
-            nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=(2, 2), stride=2),
             self.convs[1],
-            nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=(2, 2), stride=2),
             nn.Flatten()
         )
-
-        self.fc = nn.Linear(512, 256)
+        self.fc = nn.Linear(512, feature_dim)
 
         self.outputs = dict()
         self.output_logits = output_logits
