@@ -21,7 +21,7 @@ class DoubleQCritic(nn.Module):
 
     def forward(self, obs, goal, action):
         assert obs.size(0) == action.size(0)
-        obs = self.encoder(obs.float())
+       # obs = self.encoder(obs.float())
         obs = torch.cat([obs, goal], dim=-1)
 
         obs_action = torch.cat([obs, action], dim=-1)
@@ -49,16 +49,16 @@ class DiscreteCritic(nn.Module):
         super().__init__()
         self.encoder = PixelEncoder((3, 10, 10), 128)
 
-        encoder_out = 128 # todo: this is currently hard coded
-        self.Q1 = utils.mlp(encoder_out * 2, hidden_dim, action_range, hidden_depth)
-        self.Q2 = utils.mlp(encoder_out * 2 , hidden_dim, action_range, hidden_depth)
+        encoder_out = obs_dim #128 # todo: this is currently hard coded
+        self.Q1 = utils.mlp(encoder_out + goal_dim, hidden_dim, action_range, hidden_depth)
+        self.Q2 = utils.mlp(encoder_out + goal_dim, hidden_dim, action_range, hidden_depth)
 
         self.outputs = dict()
         self.apply(utils.weight_init)
 
     def forward(self, obs, goal, detach_encoder=False):
-        obs = self.encoder(obs.float(), detach=detach_encoder)
-        goal = self.encoder(goal.float(), detach=detach_encoder)
+        #obs = self.encoder(obs.float(), detach=detach_encoder)
+        #goal = self.encoder(goal.float(), detach=detach_encoder)
         obs = torch.cat([obs, goal], dim=-1)
 
         q1 = self.Q1(obs)

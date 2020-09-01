@@ -26,8 +26,30 @@ ACTION_MEANING = {
 def make_block_env():
     env = BlockPlaceEnv()
     env = ActionToNum(env)
-    env = DictObsWrap(env)
+    env = StateObsWrap(env)
     return env
+
+class StateObsWrap(gym.ObservationWrapper):
+    def __init__(self, env):
+        self.env = env
+        self.num_blocks = env.env.num_blocks
+        self.observation_space = spaces.Dict({
+            'observation': spaces.Box(low=0, high=env.num_blocks, shape=(2*self.num_blocks,), dtype=np.uint8),
+            'desired_goal': spaces.Box(low=0, high=env.num_blocks, shape=(2,), dtype=np.uint8),
+            'achieved_goal': spaces.Box(low=0, high=1, shape=(2,), dtype=np.uint8)
+        })
+        self.action_space = env.action_space
+        self.goal_pos = env.env.goal_pos
+        self._max_episode_steps = env.env._max_episode_steps
+        self.block = env.env.block_ind
+    def observation(self, obs):
+        n = obs.shape[0]
+        obs = np.concatenate([np.argwhere(obs == i) for i in range(1, self.env.num_blocks + 1)], -1)[0]
+        goal_block = np.array([])#np.zeros(self.num_blocks)
+        #goal_block[self.env.env.block_ind] = 1
+        return {'observation': obs.astype(np.float32) / n,
+                'desired_goal': np.hstack((np.array(self.env.env.goal_pos).astype(np.float32), goal_block)) / n,
+                'achieved_goal': np.hstack((np.array(self.env.env._get_block_pos(self.block)).astype(np.float32), goal_block)) / n}
 
 class DictObsWrap(gym.ObservationWrapper):
     def __init__(self, env, block=1):
@@ -63,7 +85,7 @@ class BlockEnv(gym.Env):
         self.action_space = spaces.Discrete(len(self._action_set))
         self.act_to_ij = {0: [0, 1], 1: [0, -1], 2: [-1, 0], 3: [1, 0], 4: [-1, 1], 5: [1, 1], 6: [-1, -1], 7: [1, -1]}
         # set observation space
-        self.num_blocks = 3
+        self.num_blocks = 4
         self.blocks = list(range(1, self.num_blocks + 1))
         self.grid_size = 10
         self.box_size = 1
@@ -176,7 +198,7 @@ class ActionToNum(gym.ActionWrapper):
     def __init__(self, env):
         super().__init__(env)
         self.num_actions = int(env.action_space.n)
-        self.action_space = spaces.Discrete(env.action_space.n ) #
+        self.action_space = spaces.Discrete(env.action_space.n  * env.num_blocks) #
 
     def action(self, ac):
         new_ac = ac % self.num_actions

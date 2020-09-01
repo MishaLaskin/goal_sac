@@ -106,15 +106,15 @@ class CategoricalActor(nn.Module):
         super().__init__()
         self.action_dim = action_dim
         self.encoder = PixelEncoder((3, 10, 10), 128)
-        self.trunk = utils.mlp(128 + 128, hidden_dim, action_dim,
+        self.trunk = utils.mlp(obs_dim + goal_dim, hidden_dim, action_dim,
                                hidden_depth) # todo: hard coded
 
         self.outputs = dict()
         self.apply(utils.weight_init)
 
     def forward(self, obs, goal, detach_encoder=False):
-        obs = self.encoder(obs.float(), detach=detach_encoder)
-        goal = self.encoder(goal.float(), detach=detach_encoder)
+       # obs = self.encoder(obs.float(), detach=detach_encoder)
+       # goal = self.encoder(goal.float(), detach=detach_encoder)
         obs = torch.cat([obs, goal], dim=-1)
         out = self.trunk(obs)
         self.outputs['action'] = F.softmax(out, dim=-1)

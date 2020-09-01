@@ -13,7 +13,7 @@ agent:
     init_temperature: 0.1
     alpha_lr:  5e-5
     alpha_betas: [0.9, 0.999]
-    actor_lr: 1e-5
+    actor_lr: 5e-5
     actor_betas: [0.9, 0.999]
     actor_update_frequency: 1
     critic_lr:  5e-5
@@ -38,7 +38,7 @@ discrete_critic:
     goal_dim: ${agent.params.goal_dim}
     action_dim: ${agent.params.action_dim}
     action_range: ${agent.params.action_range}
-    hidden_dim: 1024
+    hidden_dim: 128 # 1024
     hidden_depth: 2
 
 categorical_actor:
@@ -48,7 +48,7 @@ categorical_actor:
     goal_dim: ${agent.params.goal_dim}
     action_dim: ${agent.params.action_range}
     hidden_depth: 2
-    hidden_dim: 1024
+    hidden_dim: 128 #1024
 
 diag_gaussian_actor:
   class: agent.actor.DiagGaussianActor
