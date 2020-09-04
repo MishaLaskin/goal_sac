@@ -13,7 +13,7 @@ import pickle as pkl
 #import fetch_block_construction
 
 
-from video import VideoRecorder
+from video import VideoRecorder, GridVideoRecorder
 from logger import Logger
 from replay_buffer import ReplayBuffer
 import utils
@@ -59,7 +59,7 @@ class Workspace(object):
                                           int(cfg.replay_buffer_capacity),
                                           self.device)
 
-        self.video_recorder = VideoRecorder(
+        self.video_recorder = GridVideoRecorder(
             self.work_dir if cfg.save_video else None)
         self.step = 0
 
@@ -128,8 +128,8 @@ class Workspace(object):
                     last_eval += 1
                     self.logger.log('eval/episode', episode, self.step)
                     if self.cfg.save_model:
-                        self.agent.save()
-                        self.agent.load()
+                        self.agent.save(self.step)
+                        self.agent.load(self.step)
                     print("hi evaluating")
                     self.evaluate()
                 self.logger.log('train/episode_reward', episode_reward,
@@ -180,9 +180,10 @@ class Workspace(object):
             self.step += 1
 
 
-
+#workspace = None
 @hydra.main(config_path='config/train.yaml', strict=True)
 def main(cfg):
+   # global workspace
     workspace = Workspace(cfg)
     workspace.run()
 

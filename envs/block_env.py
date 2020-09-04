@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from random import shuffle
 
 
+
 ACTION_MEANING = {
     0: "RIGHT",
     1: "LEFT",
@@ -34,22 +35,23 @@ class StateObsWrap(gym.ObservationWrapper):
         self.env = env
         self.num_blocks = env.env.num_blocks
         self.observation_space = spaces.Dict({
-            'observation': spaces.Box(low=0, high=env.num_blocks, shape=(2*self.num_blocks,), dtype=np.uint8),
+            'observation': spaces.Box(low=0, high=env.num_blocks, shape=(3*self.num_blocks,), dtype=np.uint8),
             'desired_goal': spaces.Box(low=0, high=env.num_blocks, shape=(2,), dtype=np.uint8),
             'achieved_goal': spaces.Box(low=0, high=1, shape=(2,), dtype=np.uint8)
         })
         self.action_space = env.action_space
         self.goal_pos = env.env.goal_pos
         self._max_episode_steps = env.env._max_episode_steps
-        self.block = env.env.block_ind
+
     def observation(self, obs):
         n = obs.shape[0]
+        block = self.env.env.block_ind
         obs = np.concatenate([np.argwhere(obs == i) for i in range(1, self.env.num_blocks + 1)], -1)[0]
-        goal_block = np.array([])#np.zeros(self.num_blocks)
-        #goal_block[self.env.env.block_ind] = 1
-        return {'observation': obs.astype(np.float32) / n,
-                'desired_goal': np.hstack((np.array(self.env.env.goal_pos).astype(np.float32), goal_block)) / n,
-                'achieved_goal': np.hstack((np.array(self.env.env._get_block_pos(self.block)).astype(np.float32), goal_block)) / n}
+        goal_block = np.zeros(self.num_blocks) # np.array([]
+        goal_block[block - 1] = 1
+        return {'observation': np.hstack((obs / n, goal_block)),
+                'desired_goal': (np.array(self.env.env.goal_pos) / n),
+                'achieved_goal': (np.array(self.env.env._get_block_pos(block)) / n)}
 
 class DictObsWrap(gym.ObservationWrapper):
     def __init__(self, env, block=1):
@@ -60,7 +62,6 @@ class DictObsWrap(gym.ObservationWrapper):
             'achieved_goal': spaces.Box(low=0, high=1, shape=(1, *env.obs_shape),  dtype=np.uint8)
         })
         self.action_space = env.action_space
-        self.goal_pos = env.env.goal_pos
         self._max_episode_steps = env.env._max_episode_steps
         self.block = block
 
@@ -72,7 +73,7 @@ class DictObsWrap(gym.ObservationWrapper):
         desired_goal[goal_pos[0]][goal_pos[1]] = self.block
         return {'observation': np.expand_dims(obs, 0),
                 'desired_goal': np.expand_dims(desired_goal, 0),
-                'achieved_goal': np.expand_dims(obs, 0)}
+                'achieved_goal': np.expand_dims(obs.copy(), 0)}
 
 
 class BlockEnv(gym.Env):
@@ -104,7 +105,7 @@ class BlockEnv(gym.Env):
         for m in objects:
             while True:
                 i, j = np.random.randint(grid.shape[0], size=2)
-                if grid[i, j] == 0 and not (np.array([i, j]) == self.goal_pos).all():
+                if grid[i, j] == 0 and not (self.goal_pos[0] == i and self.goal_pos[1] == j):
                     grid[i, j] = m
                     break
         self.grid = grid
@@ -178,9 +179,12 @@ class BlockEnv(gym.Env):
     def render(self, mode=None):
         if mode == 'rgb_array':
             #img = resize(self.grid, (60,60)).astype(np.uint8)
-            img = self.grid
-            img = img * (255//4)
-            img = np.stack((img, img, img)).transpose(1, 2, 0)
+            img = self.grid.copy()
+            goal_ij = self._get_block_pos(self.block_ind)
+            img[goal_ij[0]][goal_ij[1]] = self.num_blocks + 1
+            img[self.goal_pos[0]][self.goal_pos[1]] = self.num_blocks + 1
+            # img = img * (255//4)
+            # img = np.stack((img, img, img)).transpose(1, 2, 0)
         else:
             img = self.grid
         return img
@@ -209,7 +213,7 @@ class ActionToNum(gym.ActionWrapper):
 class BlockPlaceEnv(BlockEnv):
     def reset_goal(self):
         self.goal_pos = ((np.random.randint(self.grid_size), np.random.randint(self.grid_size)))
-        self.block_ind = 1 #np.random.randint(self.num_blocks)
+        self.block_ind = np.random.randint(1, self.num_blocks + 1) #1
 
     def _is_done(self, obs):
         # print(self._get_block_pos(self.block_ind))

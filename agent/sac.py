@@ -46,7 +46,6 @@ class SACAgent(Agent):
         self.log_alpha.requires_grad = True
         # set target entropy to -|A|
         self.target_entropy = -action_dim
-
         # optimizers
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
                                                 lr=actor_lr,
@@ -59,6 +58,14 @@ class SACAgent(Agent):
         self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha],
                                                     lr=alpha_lr,
                                                     betas=alpha_betas)
+        # num_steps = 1e6
+        # # lr schedulers
+        # self.actor_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer=self.actor_optimizer,
+        #                                                              lr_lambda=lambda itr: (num_steps) / num_steps)  # Step once per itr.
+        # self.critic_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer=self.critic_optimizer,
+        #                                                              lr_lambda=lambda itr: (num_steps - itr) / num_steps)  # Step once per itr.
+        # self.log_alpha_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer=self.log_alpha_optimizer,
+        #                                                                 lr_lambda=lambda itr: (num_steps - itr) /num_steps)
 
         self.train()
         self.critic_target.train()
@@ -78,7 +85,7 @@ class SACAgent(Agent):
         goal = torch.FloatTensor(goal).to(self.device)
         goal = goal.unsqueeze(0)
         dist = self.actor(obs, goal)
-        action = dist.sample() if sample else dist.mean
+        action = dist.sample() if sample else torch.argmax(dist.probs, dim=-1)
        # action = action.clamp(*self.action_range)
        # assert action.ndim == 2 and action.shape[0] == 1
         return int(utils.to_np(action)[0]) # utils.to_np(action[0])
@@ -116,6 +123,7 @@ class SACAgent(Agent):
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
+       # self.critic_lr_scheduler.step()
 
         self.critic.log(logger, step)
 
@@ -140,6 +148,7 @@ class SACAgent(Agent):
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
+        #self.actor_lr_scheduler.step()
 
         self.actor.log(logger, step)
 
@@ -150,6 +159,7 @@ class SACAgent(Agent):
         logger.log('train_alpha/value', self.alpha, step)
         alpha_loss.backward()
         self.log_alpha_optimizer.step()
+        #self.log_alpha_lr_scheduler.step()
 
     def update(self, replay_buffer, logger, step):
         obs, action, reward, next_obs, not_done, not_done_no_max, achieved_goal, desired_goal = replay_buffer.sample(
@@ -166,22 +176,22 @@ class SACAgent(Agent):
             utils.soft_update_params(self.critic, self.critic_target,
                                      self.critic_tau)
 
-    def save(self):
+    def save(self, i=0):
         path = 'saved_models'
         if not os.path.exists(path):
             print('Saving model in:',os.getcwd() + '/' + path)
             os.makedirs(path)
         
-        actor_path = path + '/actor.pt'
-        critic_path = path + '/critic.pt'
+        actor_path = path + '/actor_{}.pt'.format(i)
+        critic_path = path + '/critic_{}.pt'.format(i)
         torch.save(self.actor.state_dict(), actor_path)
         torch.save(self.critic.state_dict(), critic_path)
 
-    def load(self,path=None):
+    def load(self, i, path=None):
         if path is None:
             path = 'saved_models'
-        actor_path = path + '/actor.pt'
-        critic_path = path + '/critic.pt'
+        actor_path = path + '/actor_{}.pt'.format(i)
+        critic_path = path + '/critic_{}.pt'.format(i)
         actor_ckpt = torch.load(actor_path)
         critic_ckpt = torch.load(critic_path)
         self.actor.load_state_dict(actor_ckpt)
