@@ -48,6 +48,7 @@ class Workspace(object):
             float(self.env.action_space.low.min()),
             float(self.env.action_space.high.max())
         ]
+
         self.agent = hydra.utils.instantiate(cfg.agent)
 
         self.replay_buffer = ReplayBuffer(self.obs_shape,self.goal_shape,
@@ -173,12 +174,13 @@ class Workspace(object):
             self.step += 1
 
 
-
+workspace = None
 @hydra.main(config_path='config/train.yaml', strict=True)
 def main(cfg):
+    global workspace
     workspace = Workspace(cfg)
-    workspace.run()
-
+    #workspace.run()
+main()
 
 if __name__ == '__main__':
     main()
