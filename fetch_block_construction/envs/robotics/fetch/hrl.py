@@ -282,7 +282,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
             goal_object0 = self.initial_gripper_xpos[:3] + self.np_random.uniform(-self.target_range, self.target_range,
                                                                                   size=3)
             ids = np.arange(self.og_num_blocks)
-            self.num_blocks = 1
+            self.num_blocks = self.og_num_blocks
             # a is block that should be picked up
             # b is block that a should be stacked on
             # so goal is b_pos_z + height
@@ -295,9 +295,13 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
 
             # goal has original block
             # to encourage not moving original block
-            goals.append(a_final_pos)
+            for i in range(self.num_blocks):
+                if a == i:
+                    goals.append(a_final_pos)
+                else:
+                    goals.append(self.sim.data.get_site_xpos('object' + str(i)))
             # and stacked block
-            self.block_ids = [a]
+            self.block_ids = list(range(self.num_blocks))
 
         
 

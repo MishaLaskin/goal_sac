@@ -13,7 +13,7 @@ agent:
     init_temperature: 0.1
     alpha_lr: 1e-4
     alpha_betas: [0.9, 0.999]
-    actor_lr: 1e-4
+    actor_lr: 5e-5
     actor_betas: [0.9, 0.999]
     actor_update_frequency: 1
     critic_lr: 1e-4
