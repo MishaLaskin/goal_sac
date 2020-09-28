@@ -83,7 +83,6 @@ class DiagGaussianActor(nn.Module):
         attention_block = self.attention_blocks(block_pos)
         a, b, c = attention_block.shape
         attention_block = attention_block.view(a, b * c)
-        print("SHAPES", obs.shape, attention_block.shape, goal.shape)
         obs = torch.cat([obs, attention_block, goal], dim=-1)
     
         mu, log_std = self.trunk(obs).chunk(2, dim=-1)
