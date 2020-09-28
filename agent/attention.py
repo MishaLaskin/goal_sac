@@ -26,8 +26,8 @@ class GPT1Config(GPTConfig):
 
 class BlockConfig(GPTConfig):
     n_layer=4
-    n_head=5
-    n_embd=45 # double check this
+    n_head=3
+    n_embd=15 # double check this
 
 class CausalSelfAttention(nn.Module):
     """
