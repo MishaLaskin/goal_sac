@@ -67,7 +67,7 @@ class DiagGaussianActor(nn.Module):
         self.obs_dim = obs_dim
         self.attention_blocks = nn.Sequential(*[Block(config) for _ in range(config.n_layer)],
                                               nn.LayerNorm(config.n_embd),
-                                              nn.Linear(config.n_embd, obs_dim, bias=False)
+                                              nn.Linear(config.n_embd, 15, bias=False)
                                               )
         self.trunk = utils.mlp(2*obs_dim + goal_dim, hidden_dim, 2 * action_dim,
                                hidden_depth)
