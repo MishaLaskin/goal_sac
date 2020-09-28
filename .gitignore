@@ -4,3 +4,9 @@ exp
 *.csv
 tb
 notebooks
+*.pkl
+*.mp4
+*.ipynb
+*.png
+*.npy
+._*
