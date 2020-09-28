@@ -69,7 +69,7 @@ class DiagGaussianActor(nn.Module):
                                               nn.LayerNorm(config.n_embd),
                                               nn.Linear(config.n_embd, 15, bias=False)
                                               )
-        self.trunk = utils.mlp(2*obs_dim + goal_dim, hidden_dim, 2 * action_dim,
+        self.trunk = utils.mlp(2*obs_dim + goal_dim - 10, hidden_dim, 2 * action_dim,
                                hidden_depth)
 
         self.outputs = dict()
