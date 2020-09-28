@@ -78,6 +78,7 @@ class SACAgent(Agent):
         return utils.to_np(action[0])
 
     def update_critic(self, obs, action, reward, next_obs, not_done, achieved_goal, desired_goal, logger, step):
+        
         dist = self.actor(next_obs, desired_goal)
         next_action = dist.rsample()
         log_prob = dist.log_prob(next_action).sum(-1, keepdim=True)
