@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch import distributions as pyd
 
 import utils
+from agent.attention import Block, BlockConfig
 
 
 class TanhTransform(pyd.transforms.Transform):
@@ -62,7 +63,13 @@ class DiagGaussianActor(nn.Module):
         super().__init__()
 
         self.log_std_bounds = log_std_bounds
-        self.trunk = utils.mlp(obs_dim + goal_dim, hidden_dim, 2 * action_dim,
+        config = BlockConfig()
+        self.obs_dim = obs_dim
+        self.attention_blocks = nn.Sequential(*[Block(config) for _ in range(config.n_layer)],
+                                              nn.LayerNorm(config.n_embd),
+                                              nn.Linear(config.n_embd, obs_dim, bias=False)
+                                              )
+        self.trunk = utils.mlp(2*obs_dim + goal_dim, hidden_dim, 2 * action_dim,
                                hidden_depth)
 
         self.outputs = dict()
@@ -70,7 +77,9 @@ class DiagGaussianActor(nn.Module):
 
     def forward(self, obs, goal):
 
-        obs = torch.cat([obs, goal], dim=-1)
+        block_pos = torch.narrow(obs, 1, 10, self.obs_dim-10)
+        attention_block = self.attention_blocks(block_pos)
+        obs = torch.cat([obs, attention_block, goal], dim=-1)
     
         mu, log_std = self.trunk(obs).chunk(2, dim=-1)
 
