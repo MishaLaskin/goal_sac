@@ -54,6 +54,8 @@ class CausalSelfAttention(nn.Module):
         self.n_head = config.n_head
 
     def forward(self, x, layer_past=None):
+        block_size = 15
+        x = x.view(x.shape[0], x.shape[-1] // block_size, block_size)
         B, T, C = x.size()
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
