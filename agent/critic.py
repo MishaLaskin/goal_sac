@@ -19,6 +19,8 @@ class DoubleQCritic(nn.Module):
 
     def forward(self, obs, goal, action):
         assert obs.size(0) == action.size(0)
+        block_size = 15
+        block_pos = block_pos.view(block_pos.shape[0], block_pos.shape[-1] // block_size, block_size)
         block_pos = torch.narrow(obs, 1, 10, self.obs_dim - 10)
         attention_block = self.attention_blocks(block_pos)
         obs = torch.cat([obs, attention_block, goal], dim=-1)
