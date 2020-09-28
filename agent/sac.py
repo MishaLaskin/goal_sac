@@ -34,6 +34,8 @@ class SACAgent(Agent):
         self.critic_target.load_state_dict(self.critic.state_dict())
 
         self.actor = hydra.utils.instantiate(actor_cfg).to(self.device)
+        self.critic.attention_blocks = self.actor.attention_blocks
+        self.critic_target.attention_blocks = self.actor.attention_blocks
 
         self.log_alpha = torch.tensor(np.log(init_temperature)).to(self.device)
         self.log_alpha.requires_grad = True
