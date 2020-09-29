@@ -46,6 +46,7 @@ def create_attention_embedding(device, qval=False, shared_normalizer=None):
         recurrent_graph=False
     )
     mlp_kwargs = None
+    readout = AttentiveGraphPooling(mlp_kwargs)
     if qval:
         mlp_kwargs = dict(
         hidden_sizes=[64, 64, 64],
@@ -53,9 +54,9 @@ def create_attention_embedding(device, qval=False, shared_normalizer=None):
         input_size=1*embedding_dim,
         layer_norm=True,
         )
+        readout = AttentiveGraphPooling(**mlp_kwargs)
     input_module = FetchInputPreprocessing(**input_module_kwargs, device=device)
     graph_propagation = GraphPropagation(**graphprop_kwargs)
-    readout = AttentiveGraphPooling(**mlp_kwargs)
     if ret_norm:
         return input_module, graph_propagation, readout, shared_normalizer
     return input_module, graph_propagation, readout
