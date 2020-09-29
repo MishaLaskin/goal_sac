@@ -87,6 +87,7 @@ class SACAgent(Agent):
         dist = self.actor(obs, goal)
         action = dist.sample() if sample else dist.mean
         action = action.clamp(*self.action_range)
+        print("AC SHAPE", action.shape)
         assert action.ndim == 2 and action.shape[0] == 1
       #  print(action)
         return utils.to_np(action[0])
