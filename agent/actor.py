@@ -62,7 +62,6 @@ class DiagGaussianActor(nn.Module):
         super().__init__()
 
         self.log_std_bounds = log_std_bounds
-        config = BlockConfig()
         self.obs_dim = obs_dim
         self.goal_dim = goal_dim
         self.trunk = utils.mlp(64, hidden_dim, 2 * action_dim,
