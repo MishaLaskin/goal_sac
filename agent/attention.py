@@ -75,7 +75,7 @@ class FetchInputPreprocessing(nn.Module):
                  embedding_dim,
                  device,
                  layer_norm=True):
-        self.save_init_params(locals())
+        #self.save_init_params(locals())
         super().__init__()
         self.normalizer = normalizer
         self.fc_embed = nn.Linear(object_total_dim, embedding_dim)
@@ -105,7 +105,7 @@ class Attention(nn.Module):
                  layer_norm=True,
                  activation_fnx=F.leaky_relu,
                  softmax_temperature=1.0):
-        self.save_init_params(locals())
+        #self.save_init_params(locals())
         super().__init__()
         self.fc_createheads = nn.Linear(embedding_dim, num_heads * embedding_dim)
         self.fc_logit = nn.Linear(embedding_dim, 1)
@@ -183,7 +183,7 @@ class AttentiveGraphToGraph(nn.Module):
                  num_heads=1,
                  layer_norm=True,
                  **kwargs):
-        self.save_init_params(locals())
+        #self.save_init_params(locals())
         super().__init__()
         self.fc_qcm = nn.Linear(embedding_dim, 3 * embedding_dim)
         self.attention = Attention(embedding_dim, num_heads=num_heads, layer_norm=layer_norm)
@@ -217,7 +217,7 @@ class AttentiveGraphPooling(nn.Module):
                  init_w=3e-3,
                  layer_norm=True,
                  mlp_kwargs=None):
-        self.save_init_params(locals())
+        #self.save_init_params(locals())
         super().__init__()
         self.fc_cm = nn.Linear(embedding_dim, 2 * embedding_dim)
         self.layer_norm = nn.LayerNorm(2*embedding_dim) if layer_norm else None
@@ -279,7 +279,7 @@ class Mlp(nn.Module):
             layer_norm=False,
             layer_norm_kwargs=None,
     ):
-        self.save_init_params(locals())
+        #self.save_init_params(locals())
         super().__init__()
 
         if layer_norm_kwargs is None:
@@ -351,7 +351,7 @@ class GraphPropagation(nn.Module):
         :param graph_module_kwargs:
         :param style: OSIL or relational inductive bias.
         """
-        self.save_init_params(locals())
+        #self.save_init_params(locals())
         super().__init__()
 
         # Instance settings
