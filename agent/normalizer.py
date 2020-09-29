@@ -1,10 +1,111 @@
 import numpy as np
 
-from agent.attention import fetch_preprocessing
 import torch
 
 def get_numpy(tensor):
     return tensor.to('cpu').detach().numpy()
+def fetch_preprocessing(obs,
+                        device,
+                        actions=None,
+                        normalizer=None,
+                        robot_dim=10,
+                        object_dim=15,
+                        goal_dim=3,
+                        zero_state_preprocessing_fnx=False,
+                        lop_state_dim=3,
+                        mask=None,
+                        return_combined_state=True):
+    """
+    For Fetch robotics gym environment. Takes a flattened state and processes it into batched, normalized objects.
+    :param obs: N x (nR + nB * nFb)
+    :param actions
+    :param robot_dim:
+    :param object_dim: nFb
+    :param num_objects:
+    :param goal_dim:
+    :param zero_state_preprocessing_fnx: Zero out state for testing.
+    :return: N x nB x (nFb + nR). If in QValueCPA, concats actions to the left of the shared return
+    """
+    if len(obs.shape) == 3:
+        obs = obs.squeeze(1)
+    if lop_state_dim:
+        obs = obs.narrow(1, 0, obs.size(1)-lop_state_dim) # Chop off the final 3 dimension of gripper position
+
+    batch_size, environment_state_length = obs.size()
+    if actions is not None:
+        action_dim = actions.size(-1)
+    else:
+        action_dim = 0
+
+    if zero_state_preprocessing_fnx:
+        obs = torch.zeros(batch_size, environment_state_length).to(device)
+
+    nB = (environment_state_length - robot_dim) / (object_dim + goal_dim)
+
+    assert nB.is_integer(), (nB, environment_state_length, robot_dim, object_dim, goal_dim) # TODO: this checks if the lopped state still breaks down into the right object dimensions. The only worry here is whether the obs was messed up at the start of the function, e.g. the samples from the replay buffer incorrectly put the lopped state somewwhere.
+
+    nB = int(nB)
+    if mask is None:
+        mask = torch.ones(obs.shape[0], nB).to(device)
+
+    kwargs_state_length = robot_dim + object_dim * nB + goal_dim * nB
+    assert kwargs_state_length == environment_state_length, F"{kwargs_state_length} != {environment_state_length}"
+
+    # N x nR. From index 0 to shared dim per sample, we have the robot_state
+    robot_state_flat = obs.narrow(1, 0, robot_dim)
+
+    # assert (state_length - shared_dim - goal_state_dim) % block_feature_dim == 0, state_length - shared_dim - goal_state_dim
+
+    # N x (nB x nFb)
+    flattened_objects = obs.narrow(1, robot_dim, object_dim * nB)
+
+    # -> N x nB x nFb
+    batched_objects = flattened_objects.view(batch_size, nB, object_dim)
+
+    # N x (nB x nFg) # TODO: perhaps add lop state dim
+    flattened_goals = obs.narrow(1, robot_dim + nB * object_dim, nB * goal_dim)
+
+    # -> N x nB x nFg
+    batched_goals = flattened_goals.view(batch_size, nB, goal_dim)
+
+    assert torch.eq(torch.cat((
+                         robot_state_flat.view(batch_size, -1),
+                         batched_objects.view(batch_size, -1),
+                         batched_goals.view(batch_size, -1)), dim=1),
+        obs).all()
+
+    # Broadcast robot_state
+    # -> N x nB x nR
+    batch_shared = robot_state_flat.unsqueeze(1).expand(-1, nB, -1)
+    batch_objgoals = torch.cat((batched_objects, batched_goals), dim=-1)
+
+    batch_shared = batch_shared.clone() * mask.unsqueeze(-1).expand_as(batch_shared)
+    batch_objgoals = batch_objgoals.clone() * mask.unsqueeze(-1).expand_as(batch_objgoals)
+
+    if normalizer is not None:
+        robot_singleobj_singlegoal = torch.cat((batch_shared, batch_objgoals), dim=-1).view(batch_size * nB, robot_dim + object_dim + goal_dim)
+
+        # Single objects means, we flatten the nB dimension
+        norm_singlerobot_singleobj_singlegoal, norm_actions = normalizer.normalize_all(robot_singleobj_singlegoal, actions)
+
+        # Set these two variables to be the normalized versions
+        norm_singlerobot, norm_singleobj_singlegoal = torch.split(norm_singlerobot_singleobj_singlegoal, [robot_dim, object_dim + goal_dim], dim=-1)
+
+        # Turn single objects back into batches of nB objects
+        norm_batchobjgoals = norm_singleobj_singlegoal.contiguous().view(batch_size, nB,  object_dim + goal_dim)
+        norm_batchshared = norm_singlerobot.contiguous().view(batch_size, nB, robot_dim)
+
+        batch_shared = norm_batchshared
+        batch_objgoals = norm_batchobjgoals
+        actions = norm_actions
+
+    if actions is not None:
+        batch_shared = torch.cat((actions.unsqueeze(1).expand(-1, nB, -1), batch_shared), dim=-1)
+
+    assert batch_shared.shape == torch.Size([batch_size, nB, robot_dim + action_dim]), (batch_shared.shape, torch.Size([batch_size, nB, robot_dim + action_dim]))
+
+    batched_combined_state = torch.cat((batch_shared, batch_objgoals), dim=-1)
+    return batched_combined_state
 
 class Normalizer(object):
     def __init__(
