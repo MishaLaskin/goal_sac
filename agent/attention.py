@@ -107,7 +107,7 @@ class Attention(nn.Module):
                  activation_fnx=F.leaky_relu,
                  softmax_temperature=1.0):
         #self.save_init_params(locals())
-        super().__init__()
+        super(Attention, self).__init__()
         self.fc_createheads = nn.Linear(embedding_dim, num_heads * embedding_dim)
         self.fc_logit = nn.Linear(embedding_dim, 1)
         self.fc_reduceheads = nn.Linear(num_heads * embedding_dim, embedding_dim)
@@ -185,7 +185,7 @@ class AttentiveGraphToGraph(nn.Module):
                  layer_norm=True,
                  **kwargs):
         #self.save_init_params(locals())
-        super().__init__()
+        super(AttentiveGraphToGraph, self).__init__()
         self.fc_qcm = nn.Linear(embedding_dim, 3 * embedding_dim)
         self.attention = Attention(embedding_dim, num_heads=num_heads, layer_norm=layer_norm)
         self.layer_norm= nn.LayerNorm(3*embedding_dim) if layer_norm else None
@@ -200,7 +200,7 @@ class AttentiveGraphToGraph(nn.Module):
         assert mask.size() == torch.Size([N, nV])
 
         # -> (N, nQ, nE), (N, nV, nE), (N, nV, nE)
-
+        print("DEVICES", vertices.device, self.fc_qcm.device)
         qcm_block = self.fc_qcm(vertices)
 
         query, context, memory = qcm_block.chunk(3, dim=-1)
@@ -219,7 +219,7 @@ class AttentiveGraphPooling(nn.Module):
                  layer_norm=True,
                  mlp_kwargs=None):
         #self.save_init_params(locals())
-        super().__init__()
+        super(AttentiveGraphPooling, self).__init__()
         self.fc_cm = nn.Linear(embedding_dim, 2 * embedding_dim)
         self.layer_norm = nn.LayerNorm(2*embedding_dim) if layer_norm else None
 
