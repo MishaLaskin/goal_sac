@@ -200,7 +200,7 @@ class AttentiveGraphToGraph(nn.Module):
         assert mask.size() == torch.Size([N, nV])
 
         # -> (N, nQ, nE), (N, nV, nE), (N, nV, nE)
-        print("DEVICES", vertices.device, self.fc_qcm.device)
+        print("DEVICES", vertices.device, next(self.fc_qcm.parameters()).device)
         qcm_block = self.fc_qcm(vertices)
 
         query, context, memory = qcm_block.chunk(3, dim=-1)
