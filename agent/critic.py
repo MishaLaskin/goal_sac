@@ -11,11 +11,20 @@ class DoubleQCritic(nn.Module):
     def __init__(self, obs_dim, goal_dim, action_dim, hidden_dim, hidden_depth):
         super().__init__()
         self.obs_dim = obs_dim
-        self.Q1 = utils.mlp(2*obs_dim-10 + goal_dim + action_dim, hidden_dim, 1, hidden_depth)
-        self.Q2 = utils.mlp(2*obs_dim-10 + goal_dim + action_dim, hidden_dim, 1, hidden_depth)
-
+       # self.Q1 = utils.mlp(2*obs_dim-10 + goal_dim + action_dim, hidden_dim, 1, hidden_depth)
+       # self.Q2 = utils.mlp(2*obs_dim-10 + goal_dim + action_dim, hidden_dim, 1, hidden_depth)
+        self.Q1 = utils.mlp(64, hidden_dim, 1, hidden_depth)
+        self.Q2 = utils.mlp(64, hidden_dim, 1, hidden_depth)
         self.outputs = dict()
         self.apply(utils.weight_init)
+
+    def initialize_attention(self, input_module, graph_prop, readout, input_module2, graph_prop2, readout2):
+        self.Q1_input_module = input_module
+        self.Q1_graph_propagation = graph_prop
+        self.Q1_readout = readout
+        self.Q2_input_module = input_module2
+        self.Q2_graph_propagation = graph_prop2
+        self.Q2_readout = readout2
 
     def forward(self, obs, goal, action):
         assert obs.size(0) == action.size(0)

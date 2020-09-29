@@ -10,6 +10,8 @@ import utils
 
 import hydra
 
+from agent.attention import create_attention_embedding
+
 
 class SACAgent(Agent):
     """SAC algorithm."""
@@ -24,6 +26,8 @@ class SACAgent(Agent):
         self.device = torch.device(device)
         self.discount = discount
         self.critic_tau = critic_tau
+        actor_input_module, actor_graph_propagation, actor_readout, norm = create_attention_embedding(self.device)
+
         self.actor_update_frequency = actor_update_frequency
         self.critic_target_update_frequency = critic_target_update_frequency
         self.batch_size = batch_size
@@ -31,12 +35,20 @@ class SACAgent(Agent):
         self.critic = hydra.utils.instantiate(critic_cfg).to(self.device)
         self.critic_target = hydra.utils.instantiate(critic_cfg).to(
             self.device)
+        self.critic.device = self.device
+        self.critic_target.device = self.device
+        for c in [self.critic, self.critic_target]:
+            q1_input_module, q1_graph_propagation, q1_actor_readout = create_attention_embedding(self.device,
+                                                                                                 shared_normalizer=norm)
+            q2_input_module, q2_graph_propagation, q2_actor_readout = create_attention_embedding(self.device,
+                                                                                                 shared_normalizer=norm)
+            c.initialize_attention(q1_input_module, q1_graph_propagation, q1_actor_readout,
+                                   q2_input_module, q2_graph_propagation, q2_actor_readout)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
         self.actor = hydra.utils.instantiate(actor_cfg).to(self.device)
-        self.critic.attention_blocks = self.actor.attention_blocks
-        self.critic_target.attention_blocks = self.actor.attention_blocks
-
+        self.actor.device = self.device
+        self.actor.initialize_attention(actor_input_module, actor_graph_propagation, actor_readout)
         self.log_alpha = torch.tensor(np.log(init_temperature)).to(self.device)
         self.log_alpha.requires_grad = True
         # set target entropy to -|A|
@@ -93,6 +105,7 @@ class SACAgent(Agent):
         current_Q1, current_Q2 = self.critic(obs, desired_goal, action)
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(
             current_Q2, target_Q)
+
         logger.log('train_critic/loss', critic_loss, step)
 
         # Optimize the critic

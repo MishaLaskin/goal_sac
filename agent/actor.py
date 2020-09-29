@@ -65,25 +65,24 @@ class DiagGaussianActor(nn.Module):
         self.log_std_bounds = log_std_bounds
         config = BlockConfig()
         self.obs_dim = obs_dim
-        self.attention_blocks = nn.Sequential(*[Block(config) for _ in range(config.n_layer)],
-                                              nn.LayerNorm(config.n_embd),
-                                              nn.Linear(config.n_embd, 15, bias=False)
-                                              )
-        self.trunk = utils.mlp(2*obs_dim + goal_dim - 10, hidden_dim, 2 * action_dim,
+        self.goal_dim = goal_dim
+        self.trunk = utils.mlp(64, hidden_dim, 2 * action_dim,
                                hidden_depth)
 
         self.outputs = dict()
         self.apply(utils.weight_init)
 
-    def forward(self, obs, goal):
+    def initialize_attention(self, input_module, graph_propagation, readout):
+        self.input_module, self.graph_propagation, self.readout = input_module, graph_propagation, readout
 
-        block_pos = torch.narrow(obs, 1, 10, self.obs_dim-10)
-        block_size = 15
-        block_pos = block_pos.view(block_pos.shape[0], block_pos.shape[-1] // block_size, block_size)
-        attention_block = self.attention_blocks(block_pos)
-        a, b, c = attention_block.shape
-        attention_block = attention_block.view(a, b * c)
-        obs = torch.cat([obs, attention_block, goal], dim=-1)
+    def forward(self, obs, goal):
+        obs = torch.cat([obs, goal], dim=-1)
+        mask = torch.ones(obs.shape[0], self.goal_dim//3 - 1).to(self.device)
+        vertices = self.input_module(obs, mask=mask)
+        relational_block_embeddings = self.graph_propagation.forward(vertices, mask=mask)
+        pooled_output = self.readout(relational_block_embeddings, mask=mask)
+        obs = pooled_output
+        print(obs.shape)
     
         mu, log_std = self.trunk(obs).chunk(2, dim=-1)
 
