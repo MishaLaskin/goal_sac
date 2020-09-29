@@ -79,7 +79,7 @@ class FetchInputPreprocessing(nn.Module):
         #self.save_init_params(locals())
         super().__init__()
         self.normalizer = normalizer
-        self.fc_embed = nn.Linear(object_total_dim, embedding_dim)
+        self.fc_embed = nn.Linear(object_total_dim, embedding_dim).to(device)
         self.layer_norm = nn.LayerNorm(embedding_dim).to(device) if layer_norm else None
         self.device = device
 

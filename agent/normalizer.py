@@ -9,6 +9,7 @@ def from_numpy(*args, device=None, **kwargs):
         return torch.from_numpy(*args, **kwargs).float().to(torch.device('cuda'))
     else:
         return torch.from_numpy(*args, **kwargs).float().to(device)
+
 def fetch_preprocessing(obs,
                         device,
                         actions=None,
@@ -110,7 +111,7 @@ def fetch_preprocessing(obs,
     assert batch_shared.shape == torch.Size([batch_size, nB, robot_dim + action_dim]), (batch_shared.shape, torch.Size([batch_size, nB, robot_dim + action_dim]))
 
     batched_combined_state = torch.cat((batch_shared, batch_objgoals), dim=-1)
-    return batched_combined_state
+    return batched_combined_state.to(device)
 
 class Normalizer(object):
     def __init__(
