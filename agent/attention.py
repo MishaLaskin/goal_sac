@@ -58,7 +58,7 @@ def create_attention_embedding(device, qval=False, shared_normalizer=None):
     input_module = FetchInputPreprocessing(**input_module_kwargs, device=device)
     graph_propagation = GraphPropagation(**graphprop_kwargs)
     if ret_norm:
-        return input_module, graph_propagation, readout, shared_normalizer
+        return input_module.to(device), graph_propagation.to(device), readout.to(device), shared_normalizer
     return input_module.to(device), graph_propagation.to(device), readout.to(device)
     # vertices = self.input_module(obs, actions=actions, mask=mask)
     # relational_block_embeddings = self.graph_propagation.forward(vertices, mask=mask)
