@@ -59,7 +59,7 @@ def create_attention_embedding(device, qval=False, shared_normalizer=None):
     graph_propagation = GraphPropagation(**graphprop_kwargs)
     if ret_norm:
         return input_module, graph_propagation, readout, shared_normalizer
-    return input_module, graph_propagation, readout
+    return input_module.to(device), graph_propagation.to(device), readout.to(device)
     # vertices = self.input_module(obs, actions=actions, mask=mask)
     # relational_block_embeddings = self.graph_propagation.forward(vertices, mask=mask)
     # pooled_output = self.readout(relational_block_embeddings, mask=mask)
@@ -80,7 +80,7 @@ class FetchInputPreprocessing(nn.Module):
         super().__init__()
         self.normalizer = normalizer
         self.fc_embed = nn.Linear(object_total_dim, embedding_dim)
-        self.layer_norm = nn.LayerNorm(embedding_dim) if layer_norm else None
+        self.layer_norm = nn.LayerNorm(embedding_dim).to(device) if layer_norm else None
         self.device = device
 
     def forward(self, obs, actions=None, mask=None):
