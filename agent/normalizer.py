@@ -6,7 +6,7 @@ def get_numpy(tensor):
     return tensor.to('cpu').detach().numpy()
 def from_numpy(*args, device=None, **kwargs):
     if device is None:
-        return torch.from_numpy(*args, **kwargs).float().to(gtorch.device('cuda'))
+        return torch.from_numpy(*args, **kwargs).float().to(torch.device('cuda'))
     else:
         return torch.from_numpy(*args, **kwargs).float().to(device)
 def fetch_preprocessing(obs,
