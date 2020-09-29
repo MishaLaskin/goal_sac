@@ -6,7 +6,6 @@ import torch.nn.functional as F
 from torch import distributions as pyd
 
 import utils
-from agent.attention import Block, BlockConfig
 
 
 class TanhTransform(pyd.transforms.Transform):
