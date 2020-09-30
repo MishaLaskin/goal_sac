@@ -31,16 +31,22 @@ class DoubleQCritic(nn.Module):
         assert obs.size(0) == action.size(0)
         obs = torch.cat([obs, goal], dim=-1)
         mask = torch.ones(obs.shape[0], self.goal_dim // 3 - 1).to(self.device)
-        vertices = self.input_module(obs, actions=action, mask=mask)
-        relational_block_embeddings = self.graph_propagation.forward(vertices, mask=mask)
-        pooled_output = self.readout(relational_block_embeddings, mask=mask)
-        assert pooled_output.size(-1) == 1
-        obs = pooled_output
+        Q1_vertices = self.Q1_input_module(obs, actions=action, mask=mask)
+        Q1_relational_block_embeddings = self.Q1_graph_propagation.forward(Q1_vertices, mask=mask)
+        Q1_pooled_output = self.Q1_readout(Q1_relational_block_embeddings, mask=mask)
+        assert Q1_pooled_output.size(-1) == 1
+        Q1_obs = Q1_pooled_output
+        Q2_vertices = self.Q2_input_module(obs, actions=action, mask=mask)
+        Q2_relational_block_embeddings = self.Q2_graph_propagation.forward(Q2_vertices, mask=mask)
+        Q2_pooled_output = self.Q2_readout(Q2_relational_block_embeddings, mask=mask)
+        assert Q2_pooled_output.size(-1) == 1
+        Q2_obs = Q2_pooled_output
         #obs = pooled_output.squeeze(1)
 
-        obs_action = torch.cat([obs, action], dim=-1)
-        q1 = self.Q1(obs_action)
-        q2 = self.Q2(obs_action)
+        q1_obs_action = torch.cat([Q1_obs, action], dim=-1)
+        q2_obs_action = torch.cat([Q2_obs, action], dim=-1)
+        q1 = self.Q1(q1_obs_action)
+        q2 = self.Q2(q2_obs_action)
 
         self.outputs['q1'] = q1
         self.outputs['q2'] = q2
