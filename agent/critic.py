@@ -11,6 +11,7 @@ class DoubleQCritic(nn.Module):
     def __init__(self, obs_dim, goal_dim, action_dim, hidden_dim, hidden_depth):
         super().__init__()
         self.obs_dim = obs_dim
+        self.goal_dim = goal_dim
        # self.Q1 = utils.mlp(2*obs_dim-10 + goal_dim + action_dim, hidden_dim, 1, hidden_depth)
        # self.Q2 = utils.mlp(2*obs_dim-10 + goal_dim + action_dim, hidden_dim, 1, hidden_depth)
         self.Q1 = utils.mlp(64, hidden_dim, 1, hidden_depth)
