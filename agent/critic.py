@@ -43,10 +43,10 @@ class DoubleQCritic(nn.Module):
         Q2_obs = Q2_pooled_output
         #obs = pooled_output.squeeze(1)
 
-        q1_obs_action = torch.cat([Q1_obs, action], dim=-1)
-        q2_obs_action = torch.cat([Q2_obs, action], dim=-1)
-        q1 = self.Q1(q1_obs_action)
-        q2 = self.Q2(q2_obs_action)
+       # q1_obs_action = torch.cat([Q1_obs, action], dim=-1)
+       # q2_obs_action = torch.cat([Q2_obs, action], dim=-1)
+        q1 = self.Q1(Q1_obs)
+        q2 = self.Q2(Q2_obs)
 
         self.outputs['q1'] = q1
         self.outputs['q2'] = q2
