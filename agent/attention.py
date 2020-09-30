@@ -54,7 +54,7 @@ def create_attention_embedding(device, qval=False, shared_normalizer=None):
         input_size=1*embedding_dim,
         layer_norm=True,
         )
-        readout = AttentiveGraphPooling(mlp_kwargs=mlp_kwargs)
+        readout = AttentiveGraphPooling(mlp_kwargs=None)#mlp_kwargs)
     input_module = FetchInputPreprocessing(**input_module_kwargs, device=device)
     graph_propagation = GraphPropagation(**graphprop_kwargs)
     if ret_norm:
