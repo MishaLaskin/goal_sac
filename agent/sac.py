@@ -38,9 +38,9 @@ class SACAgent(Agent):
         self.critic.device = self.device
         self.critic_target.device = self.device
         for c in [self.critic, self.critic_target]:
-            q1_input_module, q1_graph_propagation, q1_actor_readout = create_attention_embedding(self.device,
+            q1_input_module, q1_graph_propagation, q1_actor_readout = create_attention_embedding(self.device, qval=True,
                                                                                                  shared_normalizer=norm)
-            q2_input_module, q2_graph_propagation, q2_actor_readout = create_attention_embedding(self.device,
+            q2_input_module, q2_graph_propagation, q2_actor_readout = create_attention_embedding(self.device, qval=True,
                                                                                                  shared_normalizer=norm)
             c.initialize_attention(q1_input_module, q1_graph_propagation, q1_actor_readout,
                                    q2_input_module, q2_graph_propagation, q2_actor_readout)
