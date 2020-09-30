@@ -28,13 +28,14 @@ class DoubleQCritic(nn.Module):
 
     def forward(self, obs, goal, action):
         assert obs.size(0) == action.size(0)
-        block_size = 15
-        block_pos = torch.narrow(obs, 1, 10, self.obs_dim - 10)
-        block_pos = block_pos.view(block_pos.shape[0], block_pos.shape[-1] // block_size, block_size)
-        attention_block = self.attention_blocks(block_pos)
-        a, b, c = attention_block.shape
-        attention_block = attention_block.view(a, b*c)
-        obs = torch.cat([obs, attention_block, goal], dim=-1)
+        obs = torch.cat([obs, goal], dim=-1)
+        mask = torch.ones(obs.shape[0], self.goal_dim // 3 - 1).to(self.device)
+        vertices = self.input_module(obs, actions=action, mask=mask)
+        relational_block_embeddings = self.graph_propagation.forward(vertices, mask=mask)
+        pooled_output = self.readout(relational_block_embeddings, mask=mask)
+        assert pooled_output.size(-1) == 1
+        obs = pooled_output
+        #obs = pooled_output.squeeze(1)
 
         obs_action = torch.cat([obs, action], dim=-1)
         q1 = self.Q1(obs_action)
