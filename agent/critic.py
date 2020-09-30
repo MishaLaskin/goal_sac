@@ -35,12 +35,12 @@ class DoubleQCritic(nn.Module):
         Q1_relational_block_embeddings = self.Q1_graph_propagation.forward(Q1_vertices, mask=mask)
         Q1_pooled_output = self.Q1_readout(Q1_relational_block_embeddings, mask=mask)
        # assert Q1_pooled_output.size(-1) == 1
-        Q1_obs = Q1_pooled_output
+        Q1_obs = Q1_pooled_output.squeeze(1)
         Q2_vertices = self.Q2_input_module(obs, actions=action, mask=mask)
         Q2_relational_block_embeddings = self.Q2_graph_propagation.forward(Q2_vertices, mask=mask)
         Q2_pooled_output = self.Q2_readout(Q2_relational_block_embeddings, mask=mask)
        # assert Q2_pooled_output.size(-1) == 1
-        Q2_obs = Q2_pooled_output
+        Q2_obs = Q2_pooled_output.squeeze(1)
         #obs = pooled_output.squeeze(1)
 
        # q1_obs_action = torch.cat([Q1_obs, action], dim=-1)
