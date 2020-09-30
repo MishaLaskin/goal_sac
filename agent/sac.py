@@ -103,6 +103,7 @@ class SACAgent(Agent):
 
         # get current Q estimates
         current_Q1, current_Q2 = self.critic(obs, desired_goal, action)
+        print("q shapes", target_Q.shape, current_Q1.shape)
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(
             current_Q2, target_Q)
 
