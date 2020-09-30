@@ -1,4 +1,4 @@
-N='3'
+N='1'
 R='Sparse'
 O='Dictstate'
 IM_SIZE='84'
