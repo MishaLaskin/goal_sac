@@ -79,9 +79,8 @@ class DiagGaussianActor(nn.Module):
         vertices = self.input_module(obs, mask=mask)
         relational_block_embeddings = self.graph_propagation.forward(vertices, mask=mask)
         pooled_output = self.readout(relational_block_embeddings, mask=mask)
-        obs = pooled_output
-        print(obs.shape)
-    
+        obs = pooled_output.squeeze(1)
+
         mu, log_std = self.trunk(obs).chunk(2, dim=-1)
 
         # constrain log_std inside [log_std_min, log_std_max]
