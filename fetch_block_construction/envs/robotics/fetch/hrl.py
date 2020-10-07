@@ -6,6 +6,7 @@ import numpy as np
 import mujoco_py
 from .xml import generate_xml
 import tempfile
+import random
 
 
 class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
@@ -41,9 +42,9 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         self.render_image_obs = False
 
     def gripper_pos_far_from_goals(self, achieved_goal, goal):
-        if self.case == 'Reach':
+        if 'Reach' in self.case:
             return True
-        gripper_pos = self.sim.data.get_site_xpos('robot0:grip').copy() 
+        gripper_pos = self.sim.data.get_site_xpos('robot0:grip').copy()
 
         block_goals = goal[..., :-3] # Get all the goals EXCEPT the zero'd out grip position
 
@@ -53,7 +54,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         return np.all([d > self.distance_threshold * 2 for d in distances], axis=0)
 
     def gripper_pos_far_from_goal(self, goal):
-        if self.case == 'Reach':
+        if 'Reach' in self.case:
             return True
         gripper_pos = grip_pos = self.sim.data.get_site_xpos('robot0:grip').copy()
 
@@ -66,6 +67,8 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
 
     def subgoal_distances(self, goal_a, goal_b):
         assert goal_a.shape == goal_b.shape,(goal_a.shape,goal_b.shape)
+        if self.case == 'Pickup':
+            return (goal_a - goal_b)**2 * 10
         for i in range(self.num_blocks - 1):
             assert goal_a[..., i * 3:(i + 1) * 3].shape == goal_a[..., (i + 1) * 3:(i + 2) * 3].shape
         return [
@@ -82,15 +85,16 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         :return:
         """
         subgoal_distances = self.subgoal_distances(achieved_goal, goal)
+        #print("computing reward", subgoal_distances)
         if self.reward_type == "sparse":
-            
+
             reward = np.min([-(d > self.distance_threshold).astype(np.float32) for d in subgoal_distances], axis=0)
             reward = np.asarray(reward)
-            if "Drop" in self.case:
+            if "Drop" in self.case or self.case == "PutDown":
                 if reward == 0.0:
                     reward = 0.0 if self.gripper_pos_far_from_goal(goal) else -1.0
             #np.putmask(reward, reward == 0, self.gripper_pos_far_from_goal(goal))
-            return reward   
+            return reward
         elif self.reward_type == "dense":
             # Dense incremental
             stacked_reward = -np.sum([(d > self.distance_threshold).astype(np.float32) for d in subgoal_distances], axis=0)
@@ -127,7 +131,9 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         ])
 
         achieved_goal = []
-        
+        if self.case == 'ReachBlock':
+            achieved_goal = grip_pos.copy()
+
         #if self.case != 'Reach':
         for i in self.block_ids:
             object_i_pos = self.sim.data.get_site_xpos(self.object_names[i])
@@ -148,14 +154,16 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
                 object_i_velp.ravel(),
                 object_i_velr.ravel()
             ])
-
-            achieved_goal = np.concatenate([
-                achieved_goal, object_i_pos.copy()
-            ])
+            if self.case == 'Pickup':
+                achieved_goal = np.concatenate([achieved_goal, object_i_pos[2:3]])
+            else:
+                achieved_goal = np.concatenate([
+                    achieved_goal, object_i_pos.copy()
+                ])
         #achieved_goal = np.concatenate([achieved_goal, grip_pos.copy()])
         # pad goal with zeros due to gripper pos (should refactor this)
         achieved_goal = np.concatenate([achieved_goal, np.zeros(3)])
-        
+
        #else:
         if self.case == 'Reach':
             # if takes is reach then ag = [] so you're just getting gripper pos
@@ -165,9 +173,6 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
 
 
         # Append the grip
-
-        
-
         achieved_goal = np.squeeze(achieved_goal)
 
         return_dict = {
@@ -191,7 +196,10 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
 
         for i,j in enumerate(self.block_ids):
             site_id = self.sim.model.site_name2id('target{}'.format(j))
-            self.sim.model.site_pos[site_id] = self.goal[i * 3:(i + 1) * 3] - sites_offset[i]
+            if self.case == "Pickup":
+                self.sim.model.site_pos[site_id] = [1., 1., 1.]
+            else:
+                self.sim.model.site_pos[site_id] = self.goal[i * 3:(i + 1) * 3] - sites_offset[i]
 
         self.sim.forward()
 
@@ -208,7 +216,6 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
 
             while not ((np.linalg.norm(object_xypos - self.initial_gripper_xpos[:2]) >= 0.1) and np.all([np.linalg.norm(object_xypos - other_xpos) >= 0.06 for other_xpos in prev_obj_xpos])):
                 object_xypos = self.initial_gripper_xpos[:2] + self.np_random.uniform(-self.obj_range, self.obj_range, size=2)
-
 
             prev_obj_xpos.append(object_xypos)
 
@@ -245,8 +252,43 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         a,b = np.random.choice(ids,2,replace=False)
         self._stack_a_on_b(a,b)
 
+    def _move_gripper(self, location):
+        dir = location - self.sim.data.get_site_xpos('robot0:grip')
+        dir = np.append(dir, [0])
+        i = 0
+        mult_by = 10
+        while np.max(np.abs(dir)[:2]) >= 0.05 and np.abs(dir[2]) >= 0.01:
+            assert i < 100, "move gripper taking too long"
+            dir = location - self.sim.data.get_site_xpos('robot0:grip')
+            dir = np.append(dir, [0])
+            np.clip(dir, -1, 1)
+            self._set_action(dir * mult_by)
+            try:
+                self.sim.step()
+            except mujoco_py.builder.MujocoException as e:
+                print(e)
+            i += 1
+            mult_by -= 0.1
+        #print(self.sim.data.get_site_xpos('robot0:grip'), location)
+
+    def _block_in_hand(self, block):
+        grip_pos = self.sim.data.get_site_xpos('robot0:grip').copy()
+        #block = np.random.choice(list(range(self.num_blocks)),1,replace=False)[0]
+        object_qpos = self.sim.data.get_joint_qpos(F"object{block}:joint").copy()
+        object_qpos[:3] = grip_pos
+        self.sim.data.set_joint_qpos(F"object{block}:joint", object_qpos)
+        self._set_action(np.array([0. ,0. ,0., -1.]))
+        try:
+            self.sim.step()
+            self.sim.step()
+            self.sim.step()
+        except mujoco_py.builder.MujocoException as e:
+            print(e)
+        
+
+
     def _sample_goal(self):
-        cases = ["PickAndDrop","PickAndPlace","Reach"]
+        cases = ["PickAndDrop","PickAndPlace","Reach", "Pickup", "ReachBlock", "PutDown"]
         if self.case == "All":
             case_id = np.random.randint(0, len(cases))
             case = cases[case_id]
@@ -256,8 +298,45 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
             raise NotImplementedError
 
         goals = []
-
-        if case == "PickAndDrop":
+        if case == "PutDown":
+            ids = np.arange(self.og_num_blocks)
+            a, b = np.random.choice(ids, 2, replace=False)
+            self._block_in_hand(a)
+            # random reset other blocks
+            if random.random() > 0.5:
+                other_block = np.random.choice(list(set(ids) - set([a, b])), 1, replace=False)[0]
+                object_qpos = self.sim.data.get_joint_qpos(F"object{b}:joint")
+                bpos = self.sim.data.get_site_xpos(self.object_names[other_block])
+                object_qpos[:2] = bpos[:2]
+                object_qpos[2] = bpos[2] + 0.05
+                self.sim.data.set_joint_qpos(F"object{b}:joint", object_qpos)
+                self.sim.forward()
+            goal_pos = self.sim.data.get_site_xpos('object' + str(b)).copy()
+            goal_pos[2] += 0.05
+            for i in range(self.num_blocks):
+                if a == i:
+                    goals.append(goal_pos)
+                else:
+                    goals.append(self.sim.data.get_site_xpos(self.object_names[i]).copy())
+            self.block_ids = list(range(self.num_blocks))
+        elif case == "Pickup":
+            ids = np.arange(self.og_num_blocks)
+            a = np.random.choice(ids, 1, replace=False)[0]
+            #goal_heights = np.zeros(self.num_blocks)
+            target_height = self.height_offset + 0.20 # TODO(catc) maybe make higher
+            # reset gripper
+            move_to = self.sim.data.get_site_xpos('object' + str(a)).copy()
+            move_to[2] += 0.10
+           # self.sim.data.set_site_xpos()
+            for i in range(self.num_blocks):
+                if a == i:
+                    goals.append([target_height])
+                else:
+                    goals.append([self.height_offset])
+            #goals.append(goal_heights)
+            self.block_ids = list(range(self.num_blocks))
+           # self._move_gripper(move_to.copy())
+        elif case == "PickAndDrop":
             goal_object0 = self.initial_gripper_xpos[:3] + self.np_random.uniform(-self.target_range, self.target_range,
                                                                                   size=3)
             ids = np.arange(self.og_num_blocks)
@@ -283,7 +362,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
             goal_object0 = self.initial_gripper_xpos[:3] + self.np_random.uniform(-self.target_range, self.target_range,
                                                                                   size=3)
             ids = np.arange(self.og_num_blocks)
-            self.num_blocks = 1
+            self.num_blocks = self.og_num_blocks
             # a is block that should be picked up
             # b is block that a should be stacked on
             # so goal is b_pos_z + height
@@ -296,11 +375,16 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
 
             # goal has original block
             # to encourage not moving original block
-            goals.append(a_final_pos)
+            for i in range(self.num_blocks):
+              #  print(i, a)
+                if a == i:
+                    goals.append(a_final_pos)
+                else:
+                    #assert False, "should not ever get here"
+                    goals.append(self.sim.data.get_site_xpos('object' + str(i)))
             # and stacked block
-            self.block_ids = [a]
-
-        
+            self.block_ids = list(range(self.num_blocks))
+            #print(self.block_ids)
 
         elif case == "Reach":
             goal_object0 = self.initial_gripper_xpos[:3] + self.np_random.uniform(-self.target_range, self.target_range,
@@ -321,7 +405,17 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
             goals.append(a_final_pos)
             # and stacked block
             self.block_ids = [a]
-
+        elif case == "ReachBlock":
+            self.distance_threshold = 0.05
+            ids = np.arange(self.og_num_blocks)
+            a = np.random.choice(ids, 1, replace=False)[0]
+            a_pos = self.sim.data.get_site_xpos('object' + str(a))
+            a_final_pos = a_pos.copy()
+            a_final_pos[2] = self.height_offset + 0.10
+            goals.append(a_final_pos)
+            for i in range(self.num_blocks):
+                goals.append(self.sim.data.get_site_xpos('object' + str(i)).copy())
+            self.block_ids = list(range(self.num_blocks))
         elif case == "Singletower":
             goal_object0 = self.initial_gripper_xpos[:3] + self.np_random.uniform(-self.target_range, self.target_range,
                                                                                   size=3)

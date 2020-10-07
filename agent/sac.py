@@ -143,22 +143,26 @@ class SACAgent(Agent):
             utils.soft_update_params(self.critic, self.critic_target,
                                      self.critic_tau)
 
-    def save(self):
+    def save(self, i):
         path = 'saved_models'
         if not os.path.exists(path):
             print('Saving model in:',os.getcwd() + '/' + path)
             os.makedirs(path)
         
-        actor_path = path + '/actor.pt'
-        critic_path = path + '/critic.pt'
+        actor_path = path + '/actor_{}.pt'.format(i)
+        critic_path = path + '/critic_{}.pt'.format(i)
         torch.save(self.actor.state_dict(), actor_path)
         torch.save(self.critic.state_dict(), critic_path)
 
-    def load(self,path=None):
+    def load(self, i=None, path=None):
         if path is None:
             path = 'saved_models'
-        actor_path = path + '/actor.pt'
-        critic_path = path + '/critic.pt'
+        if i is None:
+            actor_path = path + '/actor.pt'
+            critic_path = path + '/critic.pt'
+        else:
+            actor_path = path + '/actor_{}.pt'.format(i)
+            critic_path = path + '/critic_{}.pt'.format(i)
         actor_ckpt = torch.load(actor_path)
         critic_ckpt = torch.load(critic_path)
         self.actor.load_state_dict(actor_ckpt)

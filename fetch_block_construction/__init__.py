@@ -43,7 +43,7 @@ for num_blocks in range(1, 25):
         for obs_type in ['dictimage', 'np', 'dictstate']:
             for render_size in [42, 84]:
                 for stack_only in [True, False]:
-                    for case in ["PickAndDrop","PickAndPlace","Reach"]:
+                    for case in ["PickAndDrop","PickAndPlace","Reach", "Pickup", "ReachBlock", "PutDown"]:
                         initial_qpos = {
                             'robot0:slide0': 0.405,
                             'robot0:slide1': 0.48,

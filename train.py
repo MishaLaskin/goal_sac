@@ -122,8 +122,8 @@ class Workspace(object):
                 if self.step > 0 and self.step % self.cfg.eval_frequency == 0:
                     self.logger.log('eval/episode', episode, self.step)
                     if self.cfg.save_model:
-                        self.agent.save()
-                        self.agent.load()
+                        self.agent.save(self.step)
+                        self.agent.load(self.step)
                     self.evaluate()
 
                 self.logger.log('train/episode_reward', episode_reward,
@@ -174,11 +174,12 @@ class Workspace(object):
             self.step += 1
 
 
-#workspace = None
+workspace = None
 @hydra.main(config_path='config/train.yaml', strict=True)
 def main(cfg):
-   # global workspace
+    #global workspace
     workspace = Workspace(cfg)
+    #return workspace
     workspace.run()
 #main()
 
