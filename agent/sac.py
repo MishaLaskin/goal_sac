@@ -53,6 +53,15 @@ class SACAgent(Agent):
                                                     lr=alpha_lr,
                                                     betas=alpha_betas)
 
+        num_steps = 5e6
+        # lr schedulers
+        self.actor_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer=self.actor_optimizer,
+                                                                     lr_lambda=lambda itr: (num_steps) / num_steps)  # Step once per itr.
+        self.critic_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer=self.critic_optimizer,
+                                                                     lr_lambda=lambda itr: (num_steps - itr) / num_steps)  # Step once per itr.
+        self.log_alpha_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer=self.log_alpha_optimizer,
+                                                                        lr_lambda=lambda itr: (num_steps - itr) /num_steps)
+
         self.train()
         self.critic_target.train()
 
@@ -96,6 +105,7 @@ class SACAgent(Agent):
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
+        self.critic_lr_scheduler.step()
 
         self.critic.log(logger, step)
 
@@ -116,6 +126,7 @@ class SACAgent(Agent):
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
+        self.actor_lr_scheduler.step()
 
         self.actor.log(logger, step)
 
@@ -126,6 +137,7 @@ class SACAgent(Agent):
         logger.log('train_alpha/value', self.alpha, step)
         alpha_loss.backward()
         self.log_alpha_optimizer.step()
+        self.log_alpha_lr_scheduler.step()
 
     def update(self, replay_buffer, logger, step):
         obs, action, reward, next_obs, not_done, not_done_no_max, achieved_goal, desired_goal = replay_buffer.sample(

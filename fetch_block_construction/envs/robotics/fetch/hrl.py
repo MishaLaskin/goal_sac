@@ -203,6 +203,29 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
 
         self.sim.forward()
 
+    def reset_goal_based(self, obj_pos_list):
+        ret = self.reset()
+        prev_obj_xpos = []
+        i = 0
+        for obj_name in self.object_names:
+            object_xypos = obj_pos_list[i]
+            prev_obj_xpos.append(object_xypos)
+
+            object_qpos = self.sim.data.get_joint_qpos(F"{obj_name}:joint")
+            assert object_qpos.shape == (7,)
+            object_qpos[:3] = object_xypos
+            self.sim.data.set_joint_qpos(F"{obj_name}:joint", object_qpos)
+            self.sim.forward()
+            i += 1
+        return ret
+
+    def get_object_list(self):
+        obj_list = []
+        for obj_name in self.object_names:
+            object_pos = self.sim.data.get_site_xpos(obj_name)
+            obj_list.append(object_pos)
+        return obj_list
+
     def _reset_sim(self):
         assert self.num_blocks <= 17 # Cannot sample collision free block inits with > 17 blocks
         self.sim.set_state(self.initial_state)

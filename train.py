@@ -106,6 +106,7 @@ class Workspace(object):
             
 
     def run(self):
+        i = 0
         episode, episode_reward, done = 0, 0, True
         start_time = time.time()
         path_buffer = []
@@ -128,8 +129,13 @@ class Workspace(object):
 
                 self.logger.log('train/episode_reward', episode_reward,
                                 self.step)
-
-                obs = self.env.reset()
+                obj_pos_list = self.env.get_object_list()
+                if i > 5000:
+                    i = 0
+                    self.env.reset()
+                else:
+                    i += 1
+                    obs = self.env.reset_goal_based(obj_pos_list)
                 self.agent.reset()
                 done = False
                 episode_reward = 0
