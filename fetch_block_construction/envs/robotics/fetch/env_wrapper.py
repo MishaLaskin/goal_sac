@@ -291,7 +291,7 @@ class EnvWrapper(gym.Env, ABC):
         if self.viewer is None:
             from mujoco_py import GlfwContext
             GlfwContext(offscreen=True)
-            self.viewer = mujoco_py.MjRenderContextOffscreen(self._env.sim)
+            self.viewer = mujoco_py.MjRenderContextOffscreen(self._env.sim, -1)
         self.viewer_setup(camera_id)
         return self.viewer
 
