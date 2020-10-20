@@ -65,6 +65,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         ]
         return np.all([d > self.distance_threshold * 2 for d in distances], axis=0)
 
+
     def subgoal_distances(self, goal_a, goal_b):
         assert goal_a.shape == goal_b.shape,(goal_a.shape,goal_b.shape)
         if self.case == 'Pickup':
@@ -203,13 +204,11 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
 
         self.sim.forward()
 
-    def reset_goal_based(self, obj_pos_list):
+    def reset_goal_based(self, obj_pos_list, goal, block):
         ret = self.reset()
-        prev_obj_xpos = []
         i = 0
         for obj_name in self.object_names:
             object_xypos = obj_pos_list[i]
-            prev_obj_xpos.append(object_xypos)
 
             object_qpos = self.sim.data.get_joint_qpos(F"{obj_name}:joint")
             assert object_qpos.shape == (7,)
@@ -217,13 +216,15 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
             self.sim.data.set_joint_qpos(F"{obj_name}:joint", object_qpos)
             self.sim.forward()
             i += 1
-        return ret
+        self._block_in_hand(block)
+        self.goal = goal
+        return self._get_obs()
 
     def get_object_list(self):
         obj_list = []
         for obj_name in self.object_names:
-            object_pos = self.sim.data.get_site_xpos(obj_name)
-            obj_list.append(object_pos)
+            object_pos = self.sim.data.get_site_xpos(obj_name).copy()
+            obj_list.append(object_pos.copy())
         return obj_list
 
     def _reset_sim(self):
@@ -324,6 +325,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         if case == "PutDown":
             ids = np.arange(self.og_num_blocks)
             a, b = np.random.choice(ids, 2, replace=False)
+            self.chosen_block = a
             self._block_in_hand(a)
             # random reset other blocks
             if random.random() > 0.5:
@@ -687,7 +689,14 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         done = False
 
         if "image" in self.obs_type:
-            reward = self.compute_reward_image()
+            assert self.case == 'Pickup'
+            achieved_goal = []
+            for i in self.block_ids:
+                object_i_pos = self.sim.data.get_site_xpos(self.object_names[i])
+                achieved_goal = np.concatenate([achieved_goal, object_i_pos[2:3]])
+            achieved_goal = np.concatenate([achieved_goal, np.zeros(3)])
+            desired_goal = self.goal.copy()
+            reward = self.compute_reward(achieved_goal, desired_goal, None)
             if reward < .05:
                 info = {
                     'is_success': True,

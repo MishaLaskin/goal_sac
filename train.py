@@ -129,13 +129,18 @@ class Workspace(object):
 
                 self.logger.log('train/episode_reward', episode_reward,
                                 self.step)
-                obj_pos_list = self.env.get_object_list()
-                if i > 5000:
-                    i = 0
-                    self.env.reset()
+                if True:#i == 0 or i > 20000 or episode_reward > -50:
+                   # print("resetting")
+                    obs = self.env.reset()
+                    #obj_pos_list = self.env.get_object_list()
+                    #block = self.env.chosen_block
+                    goal = self.env.goal
+                    i = 1
                 else:
+                    assert False
                     i += 1
-                    obs = self.env.reset_goal_based(obj_pos_list)
+                    self.env.reset()
+                    obs = self.env.reset_goal_based(obj_pos_list, goal, block)
                 self.agent.reset()
                 done = False
                 episode_reward = 0
@@ -180,10 +185,10 @@ class Workspace(object):
             self.step += 1
 
 
-workspace = None
+#workspace = None
 @hydra.main(config_path='config/train.yaml', strict=True)
 def main(cfg):
-    #global workspace
+    global workspace
     workspace = Workspace(cfg)
     #return workspace
     workspace.run()

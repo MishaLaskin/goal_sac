@@ -11,10 +11,14 @@ import math
 
 import dmc2gym
 
+from fetch_block_construction.envs.robotics.fetch.env_wrapper import EnvWrapper
+
+
 def make_env(cfg):
 
     env = gym.make(cfg.env)
     env.seed(cfg.seed)
+    env = EnvWrapper(env, cameras=[0, 1])
     assert env.action_space.low.min() >= -1
     assert env.action_space.high.max() <= 1
 
