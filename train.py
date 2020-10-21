@@ -103,9 +103,20 @@ class Workspace(object):
             self.replay_buffer.add(obs, action, reward, next_obs, done,
                                 done_no_max)
 
-            
+    def load_replay_demos(self, filename='/home/catc/experiments/git-repos/goal_sac/datasets/demos/pickup1.bin'):
+        with open(filename, 'rb') as f:
+            demos = pkl.load(f)
+        i = 0
+        for demo in demos:
+            i += 1
+            obs, action, reward, next_obs, done, done_no_max = demo
+            obs['observation'] = obs['observation'].astype(np.float32) / 255
+            next_obs['observation'] = next_obs['observation'].astype(np.float32) / 255
+            self.replay_buffer.add(obs, action, reward, next_obs, done, done_no_max)
+        print("Loaded {} Demos".format(i))
 
     def run(self):
+        #self.load_replay_demos()
         i = 0
         episode, episode_reward, done = 0, 0, True
         start_time = time.time()
