@@ -18,7 +18,7 @@ def make_env(cfg):
 
     env = gym.make(cfg.env)
     env.seed(cfg.seed)
-    env = EnvWrapper(env, cameras=[0, 1])
+    #env = EnvWrapper(env, cameras=[0, 1])
     assert env.action_space.low.min() >= -1
     assert env.action_space.high.max() <= 1
 

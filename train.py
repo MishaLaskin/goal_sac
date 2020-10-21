@@ -103,8 +103,6 @@ class Workspace(object):
             self.replay_buffer.add(obs, action, reward, next_obs, done,
                                 done_no_max)
 
-            
-
     def run(self):
         i = 0
         episode, episode_reward, done = 0, 0, True
@@ -185,14 +183,14 @@ class Workspace(object):
             self.step += 1
 
 
-#workspace = None
+workspace = None
 @hydra.main(config_path='config/train.yaml', strict=True)
 def main(cfg):
     global workspace
     workspace = Workspace(cfg)
     #return workspace
-    workspace.run()
-#main()
+    #workspace.run()
+main()
 
 if __name__ == '__main__':
     main()
