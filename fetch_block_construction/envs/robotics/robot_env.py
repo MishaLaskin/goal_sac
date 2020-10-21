@@ -121,14 +121,20 @@ class RobotEnv(gym.GoalEnv):
 
     def render(self, mode='human', size=None):
         self._render_callback()
-        if mode == 'rgb_array':
-            size=800
+        if 'rgb_array' in mode:
+            #size=800
             # window size used for old mujoco-py:
             if size:
                 data = self.sim.render(size, size, camera_name="external_camera_0")
             else:
                 data = self.sim.render(self.render_size, self.render_size, camera_name="external_camera_0")
             # original image is upside-down, so flip it
+            if "stack" in mode:
+                data2 = self.sim.render(size, size, camera_name="gripper_camera_rgb")
+                return np.concatenate((data[::-1, :, :], data2), axis=0)
+            if self.two_cams:
+                data2 = self.sim.render(size, size, camera_name="gripper_camera_rgb")
+                return np.concatenate((data[::-1, :, :], data2), axis=2).transpose(2, 0, 1)
             return data[::-1, :, :]
         elif mode == 'human':
             self._get_viewer().render()

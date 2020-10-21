@@ -41,7 +41,7 @@ class Workspace(object):
         self.obs_shape = self.env.observation_space['observation'].shape
         self.goal_shape = self.env.observation_space['desired_goal'].shape
 
-        cfg.agent.params.obs_dim = self.obs_shape[0]
+        cfg.agent.params.obs_dim = self.obs_shape
         cfg.agent.params.goal_dim = self.goal_shape[0]
         cfg.agent.params.action_dim = self.env.action_space.shape[0]
         cfg.agent.params.action_range = [

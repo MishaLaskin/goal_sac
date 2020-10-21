@@ -4,6 +4,7 @@ import math
 from torch import nn
 import torch.nn.functional as F
 from torch import distributions as pyd
+from agent.encoder import make_encoder
 
 import utils
 
@@ -60,16 +61,21 @@ class DiagGaussianActor(nn.Module):
     def __init__(self, obs_dim, goal_dim, action_dim, hidden_dim, hidden_depth,
                  log_std_bounds):
         super().__init__()
+        feature_dim=50
+        self.encoder = make_encoder(
+            'pixel', obs_dim, feature_dim=feature_dim, num_layers=4,
+            num_filters=3, output_logits=True, two_conv=False
+        )
 
         self.log_std_bounds = log_std_bounds
-        self.trunk = utils.mlp(obs_dim + goal_dim, hidden_dim, 2 * action_dim,
+        self.trunk = utils.mlp(feature_dim + goal_dim, hidden_dim, 2 * action_dim,
                                hidden_depth)
 
         self.outputs = dict()
         self.apply(utils.weight_init)
 
     def forward(self, obs, goal):
-
+        obs = self.encoder(obs)
         obs = torch.cat([obs, goal], dim=-1)
     
         mu, log_std = self.trunk(obs).chunk(2, dim=-1)

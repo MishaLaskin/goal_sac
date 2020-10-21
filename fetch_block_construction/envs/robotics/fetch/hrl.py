@@ -25,7 +25,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
 
         # Ensure we get the path separator correct on windows
         # MODEL_XML_PATH = os.path.join('fetch', F'stack{self.num_blocks}.xml')
-
+        self.two_cams = True
         with tempfile.NamedTemporaryFile(mode='wt', dir=F"{os.path.dirname(os.path.dirname(os.path.realpath(__file__)))}/assets/fetch/", delete=False, suffix=".xml") as fp:
             fp.write(generate_xml(self.num_blocks))
             MODEL_XML_PATH = fp.name
@@ -76,6 +76,15 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
             np.linalg.norm(goal_a[..., i * 3:(i + 1) * 3] - goal_b[..., i * 3:(i + 1) * 3], axis=-1) for i in
             range(self.num_blocks)
         ]
+    def compute_image_reward(self, goal):
+        assert self.case == 'Pickup', 'others not supported'
+        if self.case == 'Pickup':
+            target_block = goal.argmax()
+            curr_height = self.sim.data.get_site_xpos(self.object_names[target_block])[2]
+            if curr_height >= self.height_offset + 0.20:
+                return 0.0
+            return -1.0
+
 
     def compute_reward(self, achieved_goal, goal, info):
         """
@@ -156,7 +165,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
                 object_i_velr.ravel()
             ])
             if self.case == 'Pickup':
-                achieved_goal = np.concatenate([achieved_goal, object_i_pos[2:3]])
+                achieved_goal = np.array([1])#np.concatenate([achieved_goal, object_i_pos[2:3]])
             else:
                 achieved_goal = np.concatenate([
                     achieved_goal, object_i_pos.copy()
@@ -181,10 +190,11 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
             'achieved_goal': achieved_goal.copy(),
             'desired_goal': self.goal.copy(),
         }
-        # if self.obs_type == 'dictimage':
-        if hasattr(self, "render_image_obs") and self.render_image_obs:
-            return_dict['image_observation'] = self.render(mode='rgb_array')
-
+        #if hasattr(self, "render_image_obs") and self.render_image_obs:
+        if self.obs_type == 'dictimage':
+            imobs = self.render(mode='rgb_array', size=84)
+            imobs = imobs.astype(np.float32)/255
+            return_dict['observation'] = imobs
         return return_dict
 
     def _render_callback(self):
@@ -347,20 +357,25 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         elif case == "Pickup":
             ids = np.arange(self.og_num_blocks)
             a = np.random.choice(ids, 1, replace=False)[0]
-            #goal_heights = np.zeros(self.num_blocks)
-            target_height = self.height_offset + 0.20 # TODO(catc) maybe make higher
-            # reset gripper
-            move_to = self.sim.data.get_site_xpos('object' + str(a)).copy()
-            move_to[2] += 0.10
-           # self.sim.data.set_site_xpos()
-            for i in range(self.num_blocks):
-                if a == i:
-                    goals.append([target_height])
-                else:
-                    goals.append([self.height_offset])
-            #goals.append(goal_heights)
+            goal = list(np.zeros(self.og_num_blocks))
+            goal[a] = 1
+            goals.append(goal)
             self.block_ids = list(range(self.num_blocks))
-           # self._move_gripper(move_to.copy())
+
+           #  #goal_heights = np.zeros(self.num_blocks)
+           #  target_height = self.height_offset + 0.20 # TODO(catc) maybe make higher
+           #  # reset gripper
+           #  move_to = self.sim.data.get_site_xpos('object' + str(a)).copy()
+           #  move_to[2] += 0.10
+           # # self.sim.data.set_site_xpos()
+           #  for i in range(self.num_blocks):
+           #      if a == i:
+           #          goals.append([target_height])
+           #      else:
+           #          goals.append([self.height_offset])
+           #  #goals.append(goal_heights)
+           #  self.block_ids = list(range(self.num_blocks))
+           # # self._move_gripper(move_to.copy())
         elif case == "PickAndDrop":
             goal_object0 = self.initial_gripper_xpos[:3] + self.np_random.uniform(-self.target_range, self.target_range,
                                                                                   size=3)
@@ -691,13 +706,8 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         if "image" in self.obs_type:
             assert self.case == 'Pickup'
             achieved_goal = []
-            for i in self.block_ids:
-                object_i_pos = self.sim.data.get_site_xpos(self.object_names[i])
-                achieved_goal = np.concatenate([achieved_goal, object_i_pos[2:3]])
-            achieved_goal = np.concatenate([achieved_goal, np.zeros(3)])
-            desired_goal = self.goal.copy()
-            reward = self.compute_reward(achieved_goal, desired_goal, None)
-            if reward < .05:
+            reward = self.compute_image_reward(self.goal.copy())
+            if reward > .05:
                 info = {
                     'is_success': True,
                 }

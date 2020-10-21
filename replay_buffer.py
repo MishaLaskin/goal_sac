@@ -9,7 +9,7 @@ class ReplayBuffer(object):
         self.device = device
 
         # the proprioceptive obs is stored as float32, pixels obs as uint8
-        obs_dtype = np.float32 if len(obs_shape) == 1 else np.uint8
+        obs_dtype = np.float32 #if len(obs_shape) == 1 else np.uint8
 
         self.obs_shape = obs_shape 
         self.goal_shape = goal_shape

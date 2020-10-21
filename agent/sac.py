@@ -35,6 +35,8 @@ class SACAgent(Agent):
 
         self.actor = hydra.utils.instantiate(actor_cfg).to(self.device)
 
+        self.actor.encoder.copy_conv_weights_from(self.critic.encoder)
+
         self.log_alpha = torch.tensor(np.log(init_temperature)).to(self.device)
         self.log_alpha.requires_grad = True
         # set target entropy to -|A|
