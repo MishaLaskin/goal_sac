@@ -10,7 +10,7 @@ save_model: true
 num_train_steps: 1e7
 replay_buffer_capacity: 1e5 #${num_train_steps}
 
-num_seed_steps: 1000
+num_seed_steps: 0
 
 eval_frequency: 10000
 num_eval_episodes: 10
