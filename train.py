@@ -199,14 +199,14 @@ class Workspace(object):
             self.step += 1
 
 
-#workspace = None
+workspace = None
 @hydra.main(config_path='config/train.yaml', strict=True)
 def main(cfg):
     global workspace
     workspace = Workspace(cfg)
-    #return workspace
-    workspace.run()
-#main()
+    return workspace
+    #workspace.run()
+main()
 
 if __name__ == '__main__':
     main()

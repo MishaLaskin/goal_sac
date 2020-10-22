@@ -100,7 +100,7 @@ class SACAgent(Agent):
         target_Q = target_Q.detach()
 
         # get current Q estimates
-        current_Q1, current_Q2 = self.critic(obs, desired_goal, action)
+        current_Q1, current_Q2 = self.critic(obs, desired_goal, action, detach_encoder=False)
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(
             current_Q2, target_Q)
         logger.log('train_critic/loss', critic_loss, step)
@@ -114,10 +114,10 @@ class SACAgent(Agent):
         self.critic.log(logger, step)
 
     def update_actor_and_alpha(self, obs, achieved_goal, desired_goal, logger, step):
-        dist = self.actor(obs, desired_goal)
+        dist = self.actor(obs, desired_goal, detach_encoder=True)
         action = dist.rsample()
         log_prob = dist.log_prob(action).sum(-1, keepdim=True)
-        actor_Q1, actor_Q2 = self.critic(obs, desired_goal, action)
+        actor_Q1, actor_Q2 = self.critic(obs, desired_goal, action, detach_encoder=True)
 
         actor_Q = torch.min(actor_Q1, actor_Q2)
         actor_loss = (self.alpha.detach() * log_prob - actor_Q).mean()

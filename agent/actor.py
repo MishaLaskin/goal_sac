@@ -75,8 +75,8 @@ class DiagGaussianActor(nn.Module):
         self.outputs = dict()
         self.apply(utils.weight_init)
 
-    def forward(self, obs, goal):
-        obs = self.encoder(obs)
+    def forward(self, obs, goal, detach_encoder=False):
+        obs = self.encoder(obs, detach=detach_encoder)
         obs = torch.cat([obs, goal], dim=-1)
     
         mu, log_std = self.trunk(obs).chunk(2, dim=-1)

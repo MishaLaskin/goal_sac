@@ -23,9 +23,9 @@ class DoubleQCritic(nn.Module):
         self.outputs = dict()
         self.apply(utils.weight_init)
 
-    def forward(self, obs, goal, action):
+    def forward(self, obs, goal, action, detach_encoder=False):
         assert obs.size(0) == action.size(0)
-        obs = self.encoder(obs)
+        obs = self.encoder(obs, detach=detach_encoder)
      
         obs = torch.cat([obs, goal], dim=-1)
 
