@@ -172,7 +172,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
                 ])
         #achieved_goal = np.concatenate([achieved_goal, grip_pos.copy()])
         # pad goal with zeros due to gripper pos (should refactor this)
-        achieved_goal = np.concatenate([achieved_goal, np.zeros(3)])
+        achieved_goal = self.goal.copy() #np.concatenate([achieved_goal, np.zeros(3)])
 
        #else:
         if self.case == 'Reach':

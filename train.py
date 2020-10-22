@@ -119,7 +119,7 @@ class Workspace(object):
         print("Loaded {} Demos".format(i))
 
     def run(self):
-        self.load_replay_demos()
+        self.load_replay_demos('/home/catc/experiments/git-repos/goal_sac/datasets/demos/pickup2bloc.bin')
         i = 0
         episode, episode_reward, done = 0, 0, True
         start_time = time.time()
@@ -204,9 +204,9 @@ workspace = None
 def main(cfg):
     global workspace
     workspace = Workspace(cfg)
-    return workspace
-    #workspace.run()
-main()
+    #return workspace
+    workspace.run()
+#main()
 
 if __name__ == '__main__':
     main()
