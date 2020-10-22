@@ -70,7 +70,6 @@ class ReplayBuffer(object):
         np.copyto(self.actions[self.idx], action)
         np.copyto(self.rewards[self.idx], reward)
         np.copyto(self.next_obses[self.idx], next_obs['observation'])
-        print(self.achieved_goals.shape, next_obs['achieved_goal'].shape)
         np.copyto(self.achieved_goals[self.idx], next_obs['achieved_goal'])
         np.copyto(self.desired_goals[self.idx], next_obs['desired_goal'])
         np.copyto(self.not_dones[self.idx], not done)
