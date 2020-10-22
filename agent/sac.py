@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 import os
+from replay_buffer import center_crop_image
 
 from agent import Agent
 import utils
@@ -78,6 +79,7 @@ class SACAgent(Agent):
 
     def act(self, obs, goal, sample=False):
         obs = torch.FloatTensor(obs).to(self.device)
+        obs = center_crop_image(obs)
         obs = obs.unsqueeze(0)
         goal = torch.FloatTensor(goal).to(self.device)
         goal = goal.unsqueeze(0)
@@ -142,7 +144,7 @@ class SACAgent(Agent):
         self.log_alpha_lr_scheduler.step()
 
     def update(self, replay_buffer, logger, step):
-        obs, action, reward, next_obs, not_done, not_done_no_max, achieved_goal, desired_goal = replay_buffer.sample(
+        obs, action, reward, next_obs, not_done, not_done_no_max, achieved_goal, desired_goal = replay_buffer.sample_crop(
             self.batch_size)
 
         logger.log('train/batch_reward', reward.mean(), step)

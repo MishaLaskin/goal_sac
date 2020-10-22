@@ -16,6 +16,7 @@ import fetch_block_construction
 from video import VideoRecorder
 from logger import Logger
 from replay_buffer import ReplayBuffer
+import replay_buffer
 import utils
 
 import dmc2gym
@@ -41,7 +42,7 @@ class Workspace(object):
         self.obs_shape = self.env.observation_space['observation'].shape
         self.goal_shape = self.env.observation_space['desired_goal'].shape
 
-        cfg.agent.params.obs_dim = self.obs_shape
+        cfg.agent.params.obs_dim = (6, 78, 78)
         cfg.agent.params.goal_dim = self.goal_shape[0]
         cfg.agent.params.action_dim = self.env.action_space.shape[0]
         cfg.agent.params.action_range = [
@@ -55,6 +56,8 @@ class Workspace(object):
                                           self.env.action_space.shape,
                                           int(cfg.replay_buffer_capacity),
                                           self.device)
+        # random crop
+       # self.obs_shape =
 
         self.video_recorder = VideoRecorder(
             self.work_dir if cfg.save_video else None)

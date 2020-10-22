@@ -62,6 +62,7 @@ class DiagGaussianActor(nn.Module):
                  log_std_bounds):
         super().__init__()
         feature_dim=50
+        print("OBS DIM", obs_dim )
         self.encoder = make_encoder(
             'pixel', obs_dim, feature_dim=feature_dim, num_layers=4,
             num_filters=3, output_logits=True, two_conv=False
