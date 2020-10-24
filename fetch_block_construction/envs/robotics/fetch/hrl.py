@@ -706,7 +706,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         if "image" in self.obs_type:
             assert self.case == 'Pickup'
             achieved_goal = []
-            reward = self.compute_image_reward(self.goal.copy())
+            reward = self.compute_image_reward(obs['desired_goal'])
             if reward > .05:
                 info = {
                     'is_success': True,
