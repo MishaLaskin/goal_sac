@@ -119,7 +119,7 @@ class Workspace(object):
         print("Loaded {} Demos".format(i))
 
     def run(self):
-        self.load_replay_demos('/home/catc/experiments/git-repos/goal_sac/datasets/demos/pickup1_newcam.bin')
+        self.load_replay_demos('/home/catc/experiments/git-repos/goal_sac/datasets/demos/pickup2_success.bin')
         i = 0
         episode, episode_reward, done = 0, 0, True
         start_time = time.time()
