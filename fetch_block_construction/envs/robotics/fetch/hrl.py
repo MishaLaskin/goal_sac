@@ -77,14 +77,14 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
             range(self.num_blocks)
         ]
     def compute_image_reward(self, goal):
-        assert self.case == 'Pickup' or self.case == 'Putdown', 'others not supported'
+        assert self.case == 'Pickup' or self.case == 'PutDown', 'others not supported'
         if self.case == 'Pickup':
             target_block = goal.argmax()
             curr_height = self.sim.data.get_site_xpos(self.object_names[target_block])[2]
             if curr_height >= self.height_offset + 0.20:
                 return 0.0
             return -1.0
-        elif self.case == 'Putdown':
+        elif self.case == 'PutDown':
             block, target_block = goal[:3].argmax(), goal[3:6].argmax()
             curr_pos = self.sim.data.get_site_xpos(self.object_names[block])
             goal = self.sim.data.get_site_xpos(self.object_names[target_block]).copy()
@@ -338,27 +338,35 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
 
         goals = []
         if case == "PutDown":
+            assert self.og_num_blocks = 3
             ids = np.arange(self.og_num_blocks)
-            a, b = np.random.choice(ids, 2, replace=False)
-            self.chosen_block = a
-            self._block_in_hand(a)
-            # random reset other blocks
-            if random.random() > 0.5:
-                other_block = np.random.choice(list(set(ids) - set([a, b])), 1, replace=False)[0]
-                object_qpos = self.sim.data.get_joint_qpos(F"object{b}:joint")
-                bpos = self.sim.data.get_site_xpos(self.object_names[other_block])
-                object_qpos[:2] = bpos[:2]
-                object_qpos[2] = bpos[2] + 0.05
-                self.sim.data.set_joint_qpos(F"object{b}:joint", object_qpos)
-                self.sim.forward()
-            goal_pos = self.sim.data.get_site_xpos('object' + str(b)).copy()
-            goal_pos[2] += 0.05
-            for i in range(self.num_blocks):
-                if a == i:
-                    goals.append(goal_pos)
-                else:
-                    goals.append(self.sim.data.get_site_xpos(self.object_names[i]).copy())
+            block, target_block = np.random.choice(ids, 2, replace=False)
+            goal = list(np.zeros(self.og_num_blocks) * 2)
+            goal[block] = 1
+            goal[3+target_block] = 1
+            goals.append(goal)
             self.block_ids = list(range(self.num_blocks))
+            # ids = np.arange(self.og_num_blocks)
+            # a, b = np.random.choice(ids, 2, replace=False)
+            # self.chosen_block = a
+            # self._block_in_hand(a)
+            # # random reset other blocks
+            # if random.random() > 0.5:
+            #     other_block = np.random.choice(list(set(ids) - set([a, b])), 1, replace=False)[0]
+            #     object_qpos = self.sim.data.get_joint_qpos(F"object{b}:joint")
+            #     bpos = self.sim.data.get_site_xpos(self.object_names[other_block])
+            #     object_qpos[:2] = bpos[:2]
+            #     object_qpos[2] = bpos[2] + 0.05
+            #     self.sim.data.set_joint_qpos(F"object{b}:joint", object_qpos)
+            #     self.sim.forward()
+            # goal_pos = self.sim.data.get_site_xpos('object' + str(b)).copy()
+            # goal_pos[2] += 0.05
+            # for i in range(self.num_blocks):
+            #     if a == i:
+            #         goals.append(goal_pos)
+            #     else:
+            #         goals.append(self.sim.data.get_site_xpos(self.object_names[i]).copy())
+            # self.block_ids = list(range(self.num_blocks))
         elif case == "Pickup":
             ids = np.arange(self.og_num_blocks)
             a = np.random.choice(ids, 1, replace=False)[0]
@@ -709,7 +717,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         done = False
 
         if "image" in self.obs_type:
-            assert self.case == 'Pickup' or self.case == 'Putdown'
+            assert self.case == 'Pickup' or self.case == 'PutDown'
             achieved_goal = []
             reward = self.compute_image_reward(obs['desired_goal'])
             if reward > .05:
