@@ -77,7 +77,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
             range(self.num_blocks)
         ]
     def compute_image_reward(self, goal):
-        assert self.case == 'Pickup' or self.case == 'Putdown', others not supported
+        assert self.case == 'Pickup' or self.case == 'Putdown', 'others not supported'
         if self.case == 'Pickup':
             target_block = goal.argmax()
             curr_height = self.sim.data.get_site_xpos(self.object_names[target_block])[2]
