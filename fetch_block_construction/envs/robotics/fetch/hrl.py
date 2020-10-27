@@ -77,15 +77,21 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
             range(self.num_blocks)
         ]
     def compute_image_reward(self, goal):
-        assert self.case == 'Pickup', 'others not supported'
+        assert self.case == 'Pickup' or self.case == 'Putdown, 'others not supported'
         if self.case == 'Pickup':
             target_block = goal.argmax()
             curr_height = self.sim.data.get_site_xpos(self.object_names[target_block])[2]
             if curr_height >= self.height_offset + 0.20:
                 return 0.0
             return -1.0
-
-
+        elif self.case == 'Putdown':
+            block, target_block = goal[:3].argmax(), goal[3:6].argmax()
+            curr_pos = self.sim.data.get_site_xpos(self.object_names[block])
+            goal = self.sim.data.get_site_xpos(self.object_names[target_block]).copy()
+            goal[2] += 0.05
+            if np.linalg.norm(curr_pos - goal, axis=-1) <= 0.05 and self.gripper_pos_far_from_goal(goal):
+                return 0.0
+            return -1.0
     def compute_reward(self, achieved_goal, goal, info):
         """
         Computes reward, perhaps in an off-policy way during training. Doesn't make sense to use any of the simulator state besides that provided in achieved_goal, goal.
@@ -704,7 +710,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         done = False
 
         if "image" in self.obs_type:
-            assert self.case == 'Pickup'
+            assert self.case == 'Pickup' or self.case == 'Putdown'
             achieved_goal = []
             reward = self.compute_image_reward(obs['desired_goal'])
             if reward > .05:
