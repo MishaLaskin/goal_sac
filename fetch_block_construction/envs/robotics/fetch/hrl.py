@@ -341,7 +341,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
             assert self.og_num_blocks == 3
             ids = np.arange(self.og_num_blocks)
             block, target_block = np.random.choice(ids, 2, replace=False)
-            goal = list(np.zeros(self.og_num_blocks) * 2)
+            goal = list(np.zeros(self.og_num_blocks*2))
             goal[block] = 1
             goal[3+target_block] = 1
             goals.append(goal)
