@@ -338,7 +338,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
 
         goals = []
         if case == "PutDown":
-            assert self.og_num_blocks = 3
+            assert self.og_num_blocks == 3
             ids = np.arange(self.og_num_blocks)
             block, target_block = np.random.choice(ids, 2, replace=False)
             goal = list(np.zeros(self.og_num_blocks) * 2)
