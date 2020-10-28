@@ -343,10 +343,20 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         if case == "PutDown":
             assert self.og_num_blocks == 3
             ids = np.arange(self.og_num_blocks)
-            block, target_block = np.random.choice(ids, 2, replace=False)
+            a, b = np.random.choice(ids, 2, replace=False)
+            self.chosen_block = a
+            self._block_in_hand(a)
             goal = list(np.zeros(self.og_num_blocks*2))
-            goal[block] = 1
-            goal[3+target_block] = 1
+            if random.random() > 0.5:
+                other_block = np.random.choice(list(set(ids) - set([a, b])), 1, replace=False)[0]
+                object_qpos = self.sim.data.get_joint_qpos(F"object{b}:joint")
+                bpos = self.sim.data.get_site_xpos(self.object_names[other_block])
+                object_qpos[:2] = bpos[:2]
+                object_qpos[2] = bpos[2] + 0.05
+                self.sim.data.set_joint_qpos(F"object{b}:joint", object_qpos)
+                self.sim.forward()
+            goal[a] = 1
+            goal[3+b] = 1
             goals.append(goal)
             self.block_ids = list(range(self.num_blocks))
             # ids = np.arange(self.og_num_blocks)
