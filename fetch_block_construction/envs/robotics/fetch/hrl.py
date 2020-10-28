@@ -56,6 +56,8 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
     def gripper_pos_far_from_goal(self, goal):
         if 'Reach' in self.case:
             return True
+        if self.case == 'PutDown':
+            return np.linalg.norm(gripper_pos - goal) > self.distance_threshold*2
         gripper_pos = grip_pos = self.sim.data.get_site_xpos('robot0:grip').copy()
 
         block_goals = goal[..., :-3] # Get all the goals EXCEPT the zero'd out grip position
@@ -63,6 +65,7 @@ class FetchBlockHRLEnv(fetch_env.FetchEnv, gym_utils.EzPickle):
         distances = [
             np.linalg.norm(gripper_pos - block_goals[..., i*3:(i+1)*3], axis=-1) for i in range(self.num_blocks)
         ]
+
         return np.all([d > self.distance_threshold * 2 for d in distances], axis=0)
 
 
